@@ -123,7 +123,10 @@ def main(argv=None):
     """Run training loop."""
     seq_len = 5
     seq_width = 10  # seems to be bit_len
-    iterations = 2000000
+    iterations = 100000
+    mem_len = 256
+    bit_len = 64
+    num_heads = 4
     my_gen = disk_data("/media/dylan/DATA/mnist/mnist_train_images",
                        "/media/dylan/DATA/mnist/mnist_train_labels")
     graph = tf.Graph()
@@ -135,11 +138,11 @@ def main(argv=None):
                 input_size=28*28,
                 output_size=seq_width,
                 seq_len=seq_len,
-                mem_len=512,
-                bit_len=64,
-                num_heads=3)
+                mem_len=mem_len,
+                bit_len=bit_len,
+                num_heads=num_heads)
             dnc.install_controller(
-                ConvModel(dnc.nn_input_size, dnc.nn_output_size, 64*3))
+                ConvModel(dnc.nn_input_size, dnc.nn_output_size, bit_len*num_heads))
             output = dnc()
             with tf.name_scope("Eval"):
                 loss = tf.reduce_mean(
@@ -158,9 +161,9 @@ def main(argv=None):
                 optimizer = tf.train.AdamOptimizer(
                     learning_rate=0.0001)
                 gradients = optimizer.compute_gradients(loss)
-                for i, (grad, var) in enumerate(gradients):
-                    if grad is not None:
-                        gradients[i] = (tf.clip_by_value(grad, -10, 10), var)
+                # for i, (grad, var) in enumerate(gradients):
+                #     if grad is not None:
+                #         gradients[i] = (tf.clip_by_value(grad, -10, 10), var)
                 apply_gradients = optimizer.apply_gradients(gradients)
             sess.run(tf.global_variables_initializer())
             train_writer = tf.summary.FileWriter(

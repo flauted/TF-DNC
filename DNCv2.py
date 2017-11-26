@@ -494,7 +494,7 @@ class DNC:
         prod_sorted_use = tf.cumprod(
             sorted_usage, axis=1, exclusive=True, name="prod_sorted_use")
         sorted_alloc = tf.multiply(
-            sorted_nonusage, prod_sorted_use, name="sorted_allocation")
+            (1 - sorted_usage), prod_sorted_use, name="sorted_allocation")
         batch_size = 1
         unsorted_alloc_list = [
             tf.gather(sorted_alloc[b], freelist[b], name="unsort")
