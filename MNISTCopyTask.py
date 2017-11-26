@@ -170,9 +170,9 @@ def main(argv=None):
                 optimizer = tf.train.AdamOptimizer(
                     learning_rate=0.0001)
                 gradients = optimizer.compute_gradients(loss)
-                for i, (grad, var) in enumerate(gradients):
-                    if grad is not None:
-                        gradients[i] = (tf.clip_by_value(grad, -10, 10), var)
+                # for i, (grad, var) in enumerate(gradients):
+                #     if grad is not None:
+                #         gradients[i] = (tf.clip_by_value(grad, -10, 10), var)
                 apply_gradients = optimizer.apply_gradients(gradients)
             sess.run(tf.global_variables_initializer())
             train_writer = tf.summary.FileWriter(
