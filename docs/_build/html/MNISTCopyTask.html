@@ -156,11 +156,17 @@
             
   <div class="section" id="module-MNISTCopyTask">
 <span id="mnistcopytask-module"></span><h1>MNISTCopyTask module<a class="headerlink" href="#module-MNISTCopyTask" title="Permalink to this headline">¶</a></h1>
-<p>dncdbg.py.</p>
+<p>Repeat a sequence of MNIST images.</p>
+<p>The goal is to replicate a sequence of MNIST images. The input is a sequence
+of MNIST images, followed by black images of the same sequence length.
+The ideal output is a vector of zeros for each actual image. When the
+black images begin, the DNC should emit a one-hot vector repeating the
+class of the real images.</p>
 <dl class="class">
 <dt id="MNISTCopyTask.ConvModel">
 <em class="property">class </em><code class="descclassname">MNISTCopyTask.</code><code class="descname">ConvModel</code><span class="sig-paren">(</span><em>input_size</em>, <em>output_size</em>, <em>read_vec_size</em><span class="sig-paren">)</span><a class="headerlink" href="#MNISTCopyTask.ConvModel" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>A simple convolutional neural network to be used as a controller.</p>
 </dd></dl>
 
 <dl class="function">
@@ -172,7 +178,8 @@
 <dl class="function">
 <dt id="MNISTCopyTask.gen_sequence">
 <code class="descclassname">MNISTCopyTask.</code><code class="descname">gen_sequence</code><span class="sig-paren">(</span><em>label_img_gen</em>, <em>seq_len</em><span class="sig-paren">)</span><a class="headerlink" href="#MNISTCopyTask.gen_sequence" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Generate the input and output sequences.</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="MNISTCopyTask.main">

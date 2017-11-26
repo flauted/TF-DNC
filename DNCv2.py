@@ -72,7 +72,7 @@ class DNC:
                  mem_len=256,
                  bit_len=64,
                  num_heads=4,
-                 softmax_allocation=True):
+                 softmax_allocation=False):
         self.input_size = input_size
         self.output_size = output_size
         self.mem_len = mem_len
@@ -101,11 +101,11 @@ class DNC:
 
             # HEAD VARIABLES
             # w^r is N x R => w^{r,i} is N x 1
-            self.read_weights = tf.truncated_normal(
-                [mem_len, num_heads], stddev=0.1, name="read_weights")
+            self.read_weights = tf.fill(
+                [mem_len, num_heads], 1e-6, name="read_weights")
             # w^w is N x 1
-            self.write_weights = tf.truncated_normal(
-                [mem_len, 1], stddev=0.1, name="write_weights")
+            self.write_weights = tf.fill(
+                [mem_len, 1], 1e-6, name="write_weights")
             # r_t is R x W => r_t^{i} is 1 x W
         with tf.variable_scope("DNC/zero_state/read_vec"):
             self.read_vecs = tf.truncated_normal(
@@ -394,6 +394,7 @@ class DNC:
             The new usage vector according to the above formulae.
 
         """
+        # write_weights = tf.stop_gradient(write_weights)
         with tf.variable_scope("usage_after_write"):
             usage_after_write = prev_usage_vec + (
                 1 - prev_usage_vec) * write_weights
@@ -479,19 +480,19 @@ class DNC:
         entries of ``sorted_alloc``.
 
         Args:
-            usage_vec: The ``mem_len x 1`` corner-vector.
+            usage_vec: The ``mem_len x 1`` vector.
 
         Returns:
             Calculated allocation weights.
 
         """
-        nonusage = tf.subtract(1., usage_vec, name="nonusage")
+        nonusage = tf.multiply(-1., usage_vec, name="nonusage")
         nonusage_T = tf.transpose(nonusage, name="nonuse_T")
         sorted_nonusage, freelist = tf.nn.top_k(
             nonusage_T, k=self.mem_len, name="sort")
-        sorted_usage = tf.subtract(1., sorted_nonusage, name="sorted_usage")
+        sorted_usage = tf.multiply(-1., sorted_nonusage, name="sorted_usage")
         prod_sorted_use = tf.cumprod(
-            sorted_usage, axis=0, exclusive=True, name="prod_sorted_use")
+            sorted_usage, axis=1, exclusive=True, name="prod_sorted_use")
         sorted_alloc = tf.multiply(
             sorted_nonusage, prod_sorted_use, name="sorted_allocation")
         batch_size = 1

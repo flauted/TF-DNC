@@ -1,15 +1,24 @@
 #!/usr/bin/env python
-"""dncdbg.py."""
+"""Repeat a sequence of MNIST images.
+
+The goal is to replicate a sequence of MNIST images. The input is a sequence
+of MNIST images, followed by black images of the same sequence length.
+The ideal output is a vector of zeros for each actual image. When the
+black images begin, the DNC should emit a one-hot vector repeating the
+class of the real images.
+
+"""
 import numpy as np
 import tensorflow as tf
-import os
 import struct
-from tensorflow.python import debug as tf_debug
+# from tensorflow.python import debug as tf_debug
 from DNCv2 import DNC
 
 
 class ConvModel:
-    def __init__(self, input_size, output_size, read_vec_size):
+    """A simple convolutional neural network to be used as a controller."""
+
+    def __init__(self, input_size, output_size, read_vec_size):  # NOQA
         self.input_size = input_size
         self.output_size = output_size
         self.read_vec_size = read_vec_size
@@ -28,7 +37,7 @@ class ConvModel:
                 shape=[1, 32, 1, 1],
                 initializer=tf.zeros_initializer())
             l1_conv = tf.nn.conv2d(
-                input_imgs, 
+                input_imgs,
                 K1,
                 strides=(1, 1, 2, 2),
                 padding="VALID",
@@ -70,6 +79,8 @@ class ConvModel:
                 initializer=tf.zeros_initializer())
             fc1_out = tf.matmul(W, fc1_input) + b
             fc1_act = tf.nn.tanh(fc1_out)
+            self.W = W
+            self.b = b
             output = tf.transpose(fc1_act)
         return output
 
@@ -85,22 +96,24 @@ def disk_data(image_path, label_path):
         image = np.fromfile(
             f_image, dtype=np.int8).reshape(len(label), rows, cols)
 
-    get_img = lambda idx: (label[idx], image[idx])
+    get_img = lambda idx: (label[idx], image[idx])  # NOQA
     for i in range(len(label)):
         yield get_img(i)
 
 
 def gen_sequence(label_img_gen, seq_len):
+    """Generate the input and output sequences."""
     img_seq = []
-    labels = np.zeros([seq_len, 10]) 
+    labels = np.zeros([seq_len, 10])
     for timestep in range(seq_len):
         label, img = next(label_img_gen)
         labels[timestep, label] = 1
         img_seq.append(img)
     targets = np.concatenate((np.zeros([seq_len, 10]), labels), axis=0)
     inputs = np.concatenate(
-        (np.asarray(img_seq), 
-        np.zeros([seq_len, 28, 28], dtype=np.float32)), axis=0)
+        (np.asarray(img_seq),
+         np.zeros([seq_len, 28, 28], dtype=np.float32)),
+        axis=0)
     inputs = inputs * (2./255) - 1.
     inputs = np.reshape(inputs, [seq_len*2, 28*28])
     return targets, inputs
@@ -108,65 +121,63 @@ def gen_sequence(label_img_gen, seq_len):
 
 def main(argv=None):
     """Run training loop."""
-    seq_len = 6
+    seq_len = 5
     seq_width = 10  # seems to be bit_len
-    iterations = 9000
-    my_gen = disk_data("/media/dylan/DATA/mnist/mnist_train_images", 
+    iterations = 2000000
+    my_gen = disk_data("/media/dylan/DATA/mnist/mnist_train_images",
                        "/media/dylan/DATA/mnist/mnist_train_labels")
     graph = tf.Graph()
 
     with graph.as_default():
         with tf.Session() as sess:
+            # sess = tf_debug.LocalCLIDebugWrapperSession(sess)
             dnc = DNC(
                 input_size=28*28,
                 output_size=seq_width,
                 seq_len=seq_len,
-                mem_len=128,
-                bit_len=8,
-                num_heads=2)
+                mem_len=512,
+                bit_len=64,
+                num_heads=3)
             dnc.install_controller(
-                ConvModel(dnc.nn_input_size, dnc.nn_output_size, 8*2))
+                ConvModel(dnc.nn_input_size, dnc.nn_output_size, 64*3))
             output = dnc()
             with tf.name_scope("Eval"):
                 loss = tf.reduce_mean(
-                    tf.losses.softmax_cross_entropy(
-                        dnc.o_data,
-                        output))
+                    tf.nn.softmax_cross_entropy_with_logits(
+                        labels=dnc.o_data,
+                        logits=output))
                 with tf.name_scope("Regularizers"):
                     regularizers = (tf.nn.l2_loss(dnc.controller.K1) +
                                     tf.nn.l2_loss(dnc.controller.K2) +
                                     tf.nn.l2_loss(dnc.controller.b1) +
-                                    tf.nn.l2_loss(dnc.controller.b2))
+                                    tf.nn.l2_loss(dnc.controller.b2) +
+                                    tf.nn.l2_loss(dnc.controller.W) +
+                                    tf.nn.l2_loss(dnc.controller.b))
                 loss += 5e-4 * regularizers
             with tf.name_scope("Train"):
-                trainable_variables = tf.trainable_variables()
-                grads, _ = tf.clip_by_global_norm(
-                    tf.gradients(loss, trainable_variables), 20)
                 optimizer = tf.train.AdamOptimizer(
-                    learning_rate=0.001)
-                trainable_variables = tf.trainable_variables()
-                global_step = tf.get_variable(
-                    name="global_step",
-                    shape=[],
-                    dtype=tf.int64,
-                    initializer=tf.zeros_initializer(),
-                    trainable=False,
-                    collections=[tf.GraphKeys.GLOBAL_VARIABLES,
-                                 tf.GraphKeys.GLOBAL_STEP])
-                train_step = optimizer.apply_gradients(
-                    zip(grads, trainable_variables),
-                    global_step=global_step)
-            checker = tf.add_check_numerics_ops()  
+                    learning_rate=0.0001)
+                gradients = optimizer.compute_gradients(loss)
+                for i, (grad, var) in enumerate(gradients):
+                    if grad is not None:
+                        gradients[i] = (tf.clip_by_value(grad, -10, 10), var)
+                apply_gradients = optimizer.apply_gradients(gradients)
             sess.run(tf.global_variables_initializer())
             train_writer = tf.summary.FileWriter(
                 "tb/dnc", graph=tf.get_default_graph())
 
             for epoch in range(0, iterations+1):
-                final_o_data, final_i_data = gen_sequence(my_gen, seq_len)
+                try:
+                    final_o_data, final_i_data = gen_sequence(my_gen, seq_len)
+                except:
+                    my_gen = disk_data(
+                        "/media/dylan/DATA/mnist/mnist_train_images",
+                        "/media/dylan/DATA/mnist/mnist_train_labels")
+                    final_o_data, final_i_data = gen_sequence(my_gen, seq_len)
                 feed_dict = {dnc.i_data: final_i_data,
                              dnc.o_data: final_o_data}
-                _, current_loss, predictions, _ = sess.run(
-                    [checker, loss, output, train_step],
+                current_loss, predictions, _ = sess.run(
+                    [loss, output, apply_gradients],
                     feed_dict=feed_dict)
                 if epoch % 100 == 0:
                     print("Epoch {}: Loss {}".format(epoch, current_loss))
