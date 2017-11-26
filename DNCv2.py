@@ -72,12 +72,14 @@ class DNC:
                  mem_len=256,
                  bit_len=64,
                  num_heads=4,
-                 softmax_allocation=False):
+                 batch_size=1,
+                 softmax_allocation=True):
         self.input_size = input_size
         self.output_size = output_size
         self.mem_len = mem_len
         self.bit_len = bit_len
         self.num_heads = num_heads
+        self.batch_size = batch_size
         self.softmax_allocation = softmax_allocation
         # size of output from controller for memory interactions
         self.interface_size = num_heads*bit_len + 3*bit_len + 5*num_heads + 3
@@ -90,35 +92,35 @@ class DNC:
         # M_t is N x W
         with tf.variable_scope("DNC/Mem_Man/zero_state"):
             self.mem = tf.zeros(
-                [mem_len, bit_len], name="memory")
+                [batch_size, mem_len, bit_len], name="memory")
             # u is N x 1
-            self.usage_vec = tf.zeros([mem_len, 1], name="usage_vec")
+            self.usage_vec = tf.zeros([batch_size, mem_len], name="usage_vec")
             # L is N x N
-            self.link_mat = tf.zeros([mem_len, mem_len], name="link_mat")
+            self.link_mat = tf.zeros([batch_size, mem_len, mem_len], name="link_mat")
             # p is N x 1
             self.precedence_weight = tf.zeros(
-                [mem_len, 1], name="precedence_weight")
+                [batch_size, mem_len], name="precedence_weight")
 
             # HEAD VARIABLES
             # w^r is N x R => w^{r,i} is N x 1
             self.read_weights = tf.fill(
-                [mem_len, num_heads], 1e-6, name="read_weights")
+                [batch_size, mem_len, num_heads], 1e-6, name="read_weights")
             # w^w is N x 1
             self.write_weights = tf.fill(
-                [mem_len, 1], 1e-6, name="write_weights")
+                [batch_size, mem_len], 1e-6, name="write_weights")
             # r_t is R x W => r_t^{i} is 1 x W
         with tf.variable_scope("DNC/zero_state/read_vec"):
             self.read_vecs = tf.truncated_normal(
-                    [num_heads, bit_len], stddev=0.1, name="read_vec")
+                    [batch_size, bit_len, num_heads], stddev=0.1, name="read_vec")
 
         # NETWORK VARIABLES
         self.i_data = tf.placeholder(
             tf.float32,
-            [seq_len*2, self.input_size],
+            [batch_size, seq_len*2, self.input_size],
             name="input")
         self.o_data = tf.placeholder(
             tf.float32,
-            [seq_len*2, self.output_size],
+            [batch_size, seq_len*2, self.output_size],
             name="output")
 
     def install_controller(self, controller):
@@ -213,7 +215,7 @@ class DNC:
         with tf.variable_scope("DNC/x_r_cat/"):
             # [x_t; r_{t-1}]
             reshape_read_vecs = tf.reshape(
-                read_vecs, [1, self.num_heads*self.bit_len])
+                read_vecs, [self.batch_size, self.num_heads*self.bit_len])
             inputs = tf.concat([x, reshape_read_vecs], 1)
 
         with tf.variable_scope("controller/controller", reuse=reuse):
@@ -291,13 +293,16 @@ class DNC:
             with tf.variable_scope("read_keys"):
                 int_parts["read_keys"] = tf.reshape(
                     interface_vec[:, start_idxs[0]:start_idxs[1]],
-                    [self.num_heads, self.bit_len])
+                    [self.batch_size, self.num_heads, self.bit_len])
             with tf.variable_scope("read_strength"):
-                int_parts["read_strengths"] = 1 + tf.nn.softplus(
-                    interface_vec[:, start_idxs[1]:start_idxs[2]])
+                int_parts["read_strengths"] = tf.expand_dims(
+                    1 + tf.nn.softplus(
+                        interface_vec[:, start_idxs[1]:start_idxs[2]]),
+                    1)
             with tf.variable_scope("write_key"):
-                int_parts["write_key"] = interface_vec[
-                    :, start_idxs[2]:start_idxs[3]]
+                int_parts["write_key"] = tf.expand_dims(
+                    interface_vec[:, start_idxs[2]:start_idxs[3]],
+                    1)
             with tf.variable_scope("write_strength"):
                 int_parts["write_strength"] = 1 + tf.nn.softplus(
                     interface_vec[:, start_idxs[3]:start_idxs[4]])
@@ -308,8 +313,10 @@ class DNC:
                 int_parts["write_vec"] = interface_vec[
                     :, start_idxs[5]:start_idxs[6]]
             with tf.variable_scope("free_gates"):
-                int_parts["free_gates"] = tf.nn.sigmoid(
-                    interface_vec[:, start_idxs[6]:start_idxs[7]])
+                int_parts["free_gates"] = tf.expand_dims(
+                    tf.nn.sigmoid(
+                        interface_vec[:, start_idxs[6]:start_idxs[7]]),
+                    1)
             with tf.variable_scope("alloc_gate"):
                 int_parts["alloc_gate"] = tf.nn.sigmoid(
                     interface_vec[:, start_idxs[7]:start_idxs[8]])
@@ -324,7 +331,7 @@ class DNC:
                 int_parts["read_modes"] = tf.nn.softmax(
                     tf.reshape(
                         interface_vec[:, start_idxs[10]:start_idxs[11]],
-                        [3, self.num_heads]))
+                        [self.batch_size, 3, self.num_heads]))
         return int_parts
 
     @staticmethod
@@ -347,15 +354,16 @@ class DNC:
         """
         with tf.variable_scope("CosineSimilarity"):
             norm_mem = tf.nn.l2_normalize(
-                memory, 1, name="norm_mem")
-            norm_key = tf.nn.l2_normalize(key, 0, name="norm_key")
+                memory, 2, name="norm_mem")
+            norm_key = tf.nn.l2_normalize(key, 1, name="norm_key")
             with tf.variable_scope("similarity"):
-                similarity_z = tf.matmul(
-                    norm_mem, norm_key, transpose_b=True, name="lookup")
+                similarity_z = tf.squeeze(
+                    tf.matmul(
+                        norm_mem, norm_key, transpose_b=True, name="lookup"))
         with tf.variable_scope("scaling"):
             similarity_scaled = tf.multiply(
                 similarity_z, strength, name="str_scale")
-            similarity_a = tf.nn.softmax(similarity_scaled, 0)
+            similarity_a = tf.nn.softmax(similarity_scaled, 1)
         return similarity_a
 
     @staticmethod
@@ -400,8 +408,7 @@ class DNC:
                 1 - prev_usage_vec) * write_weights
         with tf.variable_scope("usage_after_read"):
             psi = tf.reduce_prod(
-                1 - free_gates*read_weights, reduction_indices=1)
-            psi = tf.expand_dims(psi, -1)
+                1 - read_weights*free_gates, axis=2)
         new_usage_vec = usage_after_write * psi
         return new_usage_vec
 
@@ -437,7 +444,7 @@ class DNC:
 
         """
         nonusage = tf.subtract(1., usage_vec, name="nonusage")
-        alloc_weights = tf.nn.softmax(nonusage*alloc_strength, dim=0)
+        alloc_weights = tf.nn.softmax(nonusage*alloc_strength, dim=1)
         return alloc_weights
 
     def sorting_allocation_weighting(self, usage_vec):
@@ -487,20 +494,18 @@ class DNC:
 
         """
         nonusage = tf.multiply(-1., usage_vec, name="nonusage")
-        nonusage_T = tf.transpose(nonusage, name="nonuse_T")
         sorted_nonusage, freelist = tf.nn.top_k(
-            nonusage_T, k=self.mem_len, name="sort")
+            nonusage, k=self.mem_len, name="sort")
         sorted_usage = tf.multiply(-1., sorted_nonusage, name="sorted_usage")
         prod_sorted_use = tf.cumprod(
             sorted_usage, axis=1, exclusive=True, name="prod_sorted_use")
         sorted_alloc = tf.multiply(
-            sorted_nonusage, prod_sorted_use, name="sorted_allocation")
-        batch_size = 1
+            (1 - sorted_usage), prod_sorted_use, name="sorted_allocation")
         unsorted_alloc_list = [
-            tf.gather(sorted_alloc[b], freelist[b], name="unsort")
-            for b in range(batch_size)]
+            tf.gather(sorted_alloc[b, :], freelist[b, :], name="unsort")
+            for b in range(self.batch_size)]
         alloc_weights = tf.stack(
-            unsorted_alloc_list, axis=1, name="collect_batches")
+            unsorted_alloc_list, axis=0, name="collect_batches")
         return alloc_weights
 
     @staticmethod
@@ -577,13 +582,16 @@ class DNC:
 
         """
         with tf.variable_scope("ERASE"):
+            write_weights = tf.expand_dims(write_weights, -1)
             with tf.variable_scope("erase_matrix"):
+                erase_vec = tf.expand_dims(erase_vec, 1)
                 erase_matrix = 1 - tf.matmul(write_weights, erase_vec)
             with tf.variable_scope("erase_memory"):
                 erased_mem = old_memory*erase_matrix
 
         with tf.variable_scope("WRITE"):
             with tf.variable_scope("write_matrix"):
+                write_vec = tf.expand_dims(write_vec, 1)
                 add_matrix = tf.matmul(write_weights, write_vec)
             with tf.variable_scope("write_memory"):
                 new_memory = erased_mem + add_matrix
@@ -635,21 +643,25 @@ class DNC:
         """
         with tf.variable_scope("link_mat"):
             # L_t[i,j] for all i,j : i != j
+            write_weights = tf.expand_dims(
+                write_weights, 2, name="write_weights")
+            prev_precedence = tf.expand_dims(
+                prev_precedence, 1, name="prev_precedence")
             expanded_weights = tf.matmul(
                 write_weights,
-                tf.ones([1, self.mem_len]),
+                tf.ones([3, 1, self.mem_len]),
                 name="expanded_write_weights")
             first_part = tf.multiply(
-                (1 - expanded_weights - tf.transpose(expanded_weights)),
+                (1. - expanded_weights - tf.transpose(expanded_weights, [0, 2, 1])),
                 prev_link_mat,
                 name="first_part")
             second_part = tf.matmul(
-                write_weights, prev_precedence, transpose_b=True,
+                write_weights, prev_precedence,
                 name="second_part")
             # Lt[i,i] = 0 for all i
-            I = tf.eye(self.mem_len, dtype=np.float32, name="IdtyMat")
-            un_I = tf.subtract(tf.ones([self.mem_len]), I, name="unEye")
-            new_link_mat = (first_part + second_part) * un_I
+            I = tf.eye(self.mem_len, dtype=tf.float32, name="IdtyMat")
+            un_I = tf.subtract(1., I, name="unEye")
+            new_link_mat = un_I * (first_part + second_part)
         return new_link_mat
 
     @staticmethod
@@ -672,9 +684,8 @@ class DNC:
             The updated precedence weighting.
 
         """
-        new_precedence = (
-            (1 - tf.reduce_sum(write_weights, reduction_indices=0)) *
-            prev_precedence + write_weights)
+        reset_factor = 1 - tf.reduce_sum(write_weights, 1, keep_dims=True)
+        new_precedence = reset_factor * prev_precedence + write_weights
         return new_precedence
 
     @staticmethod
@@ -716,16 +727,16 @@ class DNC:
         """
         with tf.variable_scope("forw_weights"):
             # mem_len x num_heads
-            forw_w = read_modes[2]*tf.matmul(
+            forw_w = tf.expand_dims(read_modes[:, 2, :], 1)*tf.matmul(
                 link_mat, prev_read_weights)
 
         with tf.variable_scope("cont_weights"):
             # mem_len x num_heads
-            cont_w = read_modes[1]*read_content_lookup
+            cont_w = tf.expand_dims(read_modes[:, 1, :], 1)*read_content_lookup
 
         with tf.variable_scope("back_weights"):
             # mem_len x num_heads
-            back_w = read_modes[0]*tf.matmul(
+            back_w = tf.expand_dims(read_modes[:, 0, :], 1)*tf.matmul(
                 link_mat, prev_read_weights, transpose_a=True)
 
         with tf.variable_scope("read_weights"):
@@ -840,7 +851,7 @@ class DNC:
         with tf.variable_scope("DNC/y_t/"):
             reshape_read_vecs = tf.reshape(
                 read_vecs,
-                [1, self.num_heads*self.bit_len],
+                [self.batch_size, self.num_heads*self.bit_len],
                 name="Reshape_r_t")
             access_state = tf.matmul(
                 reshape_read_vecs, read_vecs_out_weight, name="access_state")
@@ -852,10 +863,8 @@ class DNC:
         seq_prediction = []
         with tf.variable_scope("DNC"):
             with tf.variable_scope("x_t"):
-                seq_list = tf.unstack(self.i_data, axis=0)
+                seq_list = tf.unstack(self.i_data, axis=1)
             for t, seq in enumerate(seq_list):
-                with tf.variable_scope("DNC/x_t/"):
-                    seq = tf.expand_dims(seq, 0)
                 nn_out, int_vec = self._controller(
                     seq, self.read_vecs, reuse=t > 0)
                 read_vecs = self._interact_with_memory(

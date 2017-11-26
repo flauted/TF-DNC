@@ -11,7 +11,7 @@ class of the real images.
 import numpy as np
 import tensorflow as tf
 import struct
-# from tensorflow.python import debug as tf_debug
+from tensorflow.python import debug as tf_debug
 from DNCv2 import DNC
 
 
@@ -25,8 +25,8 @@ class ConvModel:
 
     def __call__(self, inputs):
         """Control the DNC."""
-        input_imgs = tf.reshape(inputs[:, :28*28], [1, 1, 28, 28])
-        read_vecs = tf.transpose(inputs[:, 28*28:])
+        input_imgs = tf.reshape(inputs[:, :28*28], [3, 1, 28, 28])
+        read_vecs = inputs[:, 28*28:]
         with tf.variable_scope("L1"):
             K1 = tf.get_variable(
                 "layer1_weights",
@@ -67,21 +67,21 @@ class ConvModel:
             self.K2 = K2
             self.b2 = b2
         with tf.variable_scope("FC1"):
-            conv_out = tf.reshape(l2_act, [64*4*4, 1])
-            fc1_input = tf.concat([conv_out, read_vecs], axis=0)
+            conv_out = tf.reshape(l2_act, [3, 64*4*4])
+            fc1_input = tf.concat([conv_out, read_vecs], axis=1)
             W = tf.get_variable(
                 "fc1_weights",
-                shape=[self.output_size, 64*4*4+self.read_vec_size],
+                shape=[64*4*4+self.read_vec_size, self.output_size],
                 initializer=tf.truncated_normal_initializer(stddev=0.1))
             b = tf.get_variable(
                 "fc1_bias",
-                shape=[self.output_size, 1],
+                shape=[self.output_size],
                 initializer=tf.zeros_initializer())
-            fc1_out = tf.matmul(W, fc1_input) + b
+            fc1_out = tf.matmul(fc1_input, W) + b
             fc1_act = tf.nn.tanh(fc1_out)
             self.W = W
             self.b = b
-            output = tf.transpose(fc1_act)
+            output = fc1_act
         return output
 
 
@@ -101,22 +101,27 @@ def disk_data(image_path, label_path):
         yield get_img(i)
 
 
-def gen_sequence(label_img_gen, seq_len):
+def gen_sequence(label_img_gen, seq_len, batch_size):
     """Generate the input and output sequences."""
-    img_seq = []
-    labels = np.zeros([seq_len, 10])
-    for timestep in range(seq_len):
-        label, img = next(label_img_gen)
-        labels[timestep, label] = 1
-        img_seq.append(img)
-    targets = np.concatenate((np.zeros([seq_len, 10]), labels), axis=0)
-    inputs = np.concatenate(
-        (np.asarray(img_seq),
-         np.zeros([seq_len, 28, 28], dtype=np.float32)),
-        axis=0)
-    inputs = inputs * (2./255) - 1.
-    inputs = np.reshape(inputs, [seq_len*2, 28*28])
-    return targets, inputs
+    target_batch = []
+    input_batch = []
+    for _ in range(batch_size):
+        img_seq = []
+        labels = np.zeros([seq_len, 10])
+        for timestep in range(seq_len):
+            label, img = next(label_img_gen)
+            labels[timestep, label] = 1
+            img_seq.append(img)
+        targets = np.concatenate((np.zeros([seq_len, 10]), labels), axis=0)
+        inputs = np.concatenate(
+            (np.asarray(img_seq),
+             np.zeros([seq_len, 28, 28], dtype=np.float32)),
+            axis=0)
+        inputs = inputs * (2./255) - 1.
+        inputs = np.reshape(inputs, [seq_len*2, 28*28])
+        target_batch.append(targets)
+        input_batch.append(inputs)
+    return target_batch, input_batch 
 
 
 def main(argv=None):
@@ -124,6 +129,9 @@ def main(argv=None):
     seq_len = 5
     seq_width = 10  # seems to be bit_len
     iterations = 2000000
+    entries_per_memory_location = 16
+    num_read_heads = 4
+    number_of_memory_locations = 64
     my_gen = disk_data("/media/dylan/DATA/mnist/mnist_train_images",
                        "/media/dylan/DATA/mnist/mnist_train_labels")
     graph = tf.Graph()
@@ -135,11 +143,15 @@ def main(argv=None):
                 input_size=28*28,
                 output_size=seq_width,
                 seq_len=seq_len,
-                mem_len=512,
-                bit_len=64,
-                num_heads=3)
+                mem_len=number_of_memory_locations,
+                bit_len=entries_per_memory_location,
+                batch_size=3,
+                num_heads=num_read_heads)
             dnc.install_controller(
-                ConvModel(dnc.nn_input_size, dnc.nn_output_size, 64*3))
+                ConvModel(
+                    dnc.nn_input_size,
+                    dnc.nn_output_size,
+                    entries_per_memory_location*num_read_heads))
             output = dnc()
             with tf.name_scope("Eval"):
                 loss = tf.reduce_mean(
@@ -168,12 +180,12 @@ def main(argv=None):
 
             for epoch in range(0, iterations+1):
                 try:
-                    final_o_data, final_i_data = gen_sequence(my_gen, seq_len)
+                    final_o_data, final_i_data = gen_sequence(my_gen, seq_len, 3)
                 except:
                     my_gen = disk_data(
                         "/media/dylan/DATA/mnist/mnist_train_images",
                         "/media/dylan/DATA/mnist/mnist_train_labels")
-                    final_o_data, final_i_data = gen_sequence(my_gen, seq_len)
+                    final_o_data, final_i_data = gen_sequence(my_gen, seq_len, 3)
                 feed_dict = {dnc.i_data: final_i_data,
                              dnc.o_data: final_o_data}
                 current_loss, predictions, _ = sess.run(
