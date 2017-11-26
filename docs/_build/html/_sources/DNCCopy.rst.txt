@@ -1,0 +1,7 @@
+DNCCopy module
+==============
+
+.. automodule:: DNCCopy
+    :members:
+    :undoc-members:
+    :show-inheritance:

@@ -1,0 +1,7 @@
+DNCimproved module
+==================
+
+.. automodule:: DNCimproved
+    :members:
+    :undoc-members:
+    :show-inheritance:

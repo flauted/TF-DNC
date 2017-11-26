@@ -1,0 +1,836 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>DNCv2 module &mdash; DNC .1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="DNC .1 documentation" href="index.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> DNC
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">DNCv2 module</a></li>
+</ul>
+</div>
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">DNC</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>DNCv2 module</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/DNCv2.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="module-DNCv2">
+<span id="dncv2-module"></span><h1>DNCv2 module<a class="headerlink" href="#module-DNCv2" title="Permalink to this headline">¶</a></h1>
+<p>Define a differentiable neural computer with alternative allocation.</p>
+<p>The differentiable neural computer was introduced by Graves, A., et. al. [2016]
+as a neural network model with a dynamic memory modeled after the modern
+CPU and RAM setup.</p>
+<dl class="class">
+<dt id="DNCv2.DNC">
+<em class="property">class </em><code class="descclassname">DNCv2.</code><code class="descname">DNC</code><span class="sig-paren">(</span><em>input_size</em>, <em>output_size</em>, <em>seq_len</em>, <em>controller=None</em>, <em>mem_len=256</em>, <em>bit_len=64</em>, <em>num_heads=4</em>, <em>softmax_allocation=True</em><span class="sig-paren">)</span><a class="headerlink" href="#DNCv2.DNC" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>Create a differentiable neural computer.</p>
+<p>The DNC is a sequence-to-sequence model that is completely
+differentiable. It features a built-in memory.</p>
+<p>Comparing to the paper glossary available at
+<a class="reference external" href="https://www.readcube.com/articles/supplement?doi=10.1038%2Fnature20101&amp;index=12&amp;ssl=1&amp;st=acd80c7ede3649cb0f4345bcdc01ec12&amp;preview=1">https://www.readcube.com/articles/supplement?doi=10.1038%2Fnature20101&amp;index=12&amp;ssl=1&amp;st=acd80c7ede3649cb0f4345bcdc01ec12&amp;preview=1</a>
+we have</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">W</span> <span class="o">&lt;=&gt;</span> <span class="n">bit_len</span> <span class="p">(</span><span class="n">memory</span> <span class="n">word</span> <span class="n">size</span><span class="p">)</span>
+<span class="n">N</span> <span class="o">&lt;=&gt;</span> <span class="n">mem_len</span> <span class="p">(</span><span class="n">number</span> <span class="n">of</span> <span class="n">memory</span> <span class="n">locations</span><span class="p">)</span>
+<span class="n">R</span> <span class="o">&lt;=&gt;</span> <span class="n">num_heads</span> <span class="p">(</span><span class="n">number</span> <span class="n">of</span> <span class="n">read</span> <span class="n">heads</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input_size</strong> (<em>int</em>) – Size of a row of input to <code class="docutils literal"><span class="pre">run</span></code> method.</li>
+<li><strong>output_size</strong> (<em>int</em>) – Expected size of output from <code class="docutils literal"><span class="pre">run</span></code>.</li>
+<li><strong>seq_len</strong> (<em>int</em>) – Number of rows of input.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Keyword Arguments:</th></tr>
+<tr class="field-even field"><td>&#160;</td><td class="field-body"><ul class="first last simple">
+<li><strong>mem_len</strong> (<em>int</em><em>, </em><em>256</em>) – Number of slots in memory.</li>
+<li><strong>bit_len</strong> (<em>int</em><em>, </em><em>64</em>) – Length of a slot in memory.</li>
+<li><strong>num_heads</strong> (<em>int</em><em>, </em><em>4</em>) – Number of read heads.</li>
+<li><strong>softmax_allocation</strong> (<em>bool</em><em>, </em><em>True</em>) – Use the alternative softmax writing
+allocation or the original formulation.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="DNCv2.DNC.input_size">
+<code class="descname">input_size</code><a class="headerlink" href="#DNCv2.DNC.input_size" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>arg</em></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv2.DNC.output_size">
+<code class="descname">output_size</code><a class="headerlink" href="#DNCv2.DNC.output_size" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>arg</em></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv2.DNC.mem_len">
+<code class="descname">mem_len</code><a class="headerlink" href="#DNCv2.DNC.mem_len" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>arg</em></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv2.DNC.bit_len">
+<code class="descname">bit_len</code><a class="headerlink" href="#DNCv2.DNC.bit_len" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>arg</em></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv2.DNC.num_heads">
+<code class="descname">num_heads</code><a class="headerlink" href="#DNCv2.DNC.num_heads" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>arg</em></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv2.DNC.softmax_allocation">
+<code class="descname">softmax_allocation</code><a class="headerlink" href="#DNCv2.DNC.softmax_allocation" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>arg</em></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv2.DNC.interface_size">
+<code class="descname">interface_size</code><a class="headerlink" href="#DNCv2.DNC.interface_size" title="Permalink to this definition">¶</a></dt>
+<dd><p><code class="docutils literal"><span class="pre">num_heads*bit_len</span> <span class="pre">+</span> <span class="pre">3*bit_len</span> <span class="pre">+</span> <span class="pre">5*num_heads</span> <span class="pre">+</span> <span class="pre">3</span></code> – Size of emitted interface vector.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv2.DNC.nn_input_size">
+<code class="descname">nn_input_size</code><a class="headerlink" href="#DNCv2.DNC.nn_input_size" title="Permalink to this definition">¶</a></dt>
+<dd><p><code class="docutils literal"><span class="pre">num_heads*bit_len</span> <span class="pre">+</span> <span class="pre">input_size</span></code> – Size of concatted
+read and input vector.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv2.DNC.nn_output_size">
+<code class="descname">nn_output_size</code><a class="headerlink" href="#DNCv2.DNC.nn_output_size" title="Permalink to this definition">¶</a></dt>
+<dd><p><code class="docutils literal"><span class="pre">output_size</span> <span class="pre">+</span> <span class="pre">interface_size</span></code> – Size of concatted
+prediction and interface vector.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv2.DNC.controller">
+<code class="descname">controller</code><a class="headerlink" href="#DNCv2.DNC.controller" title="Permalink to this definition">¶</a></dt>
+<dd><p><code class="docutils literal"><span class="pre">None</span></code> – A user defined callable (function / instance
+with a <code class="docutils literal"><span class="pre">__call__</span></code> method).</p>
+<blockquote>
+<div>NOTE: If you need <code class="docutils literal"><span class="pre">nn_input_size</span></code> or <code class="docutils literal"><span class="pre">nn_output_size</span></code> to
+define the controller, use <cite>myDNC.install_controller(callable)</cite>
+after initializing myDNC.</div></blockquote>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv2.DNC.mem">
+<code class="descname">mem</code><a class="headerlink" href="#DNCv2.DNC.mem" title="Permalink to this definition">¶</a></dt>
+<dd><p>zeros, <code class="docutils literal"><span class="pre">[mem_len,</span> <span class="pre">bit_len]</span></code> – The internal memory matrix.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv2.DNC.usage_vec">
+<code class="descname">usage_vec</code><a class="headerlink" href="#DNCv2.DNC.usage_vec" title="Permalink to this definition">¶</a></dt>
+<dd><p>zeros, <code class="docutils literal"><span class="pre">[mem_len,</span> <span class="pre">1]</span></code> – The usage vector, vec{u_t}.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv2.DNC.link_mat">
+<code class="descname">link_mat</code><a class="headerlink" href="#DNCv2.DNC.link_mat" title="Permalink to this definition">¶</a></dt>
+<dd><p>zeros, <code class="docutils literal"><span class="pre">[mem_len,</span> <span class="pre">mem_len]</span></code> – The temporal link matrix.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv2.DNC.precedence_weight">
+<code class="descname">precedence_weight</code><a class="headerlink" href="#DNCv2.DNC.precedence_weight" title="Permalink to this definition">¶</a></dt>
+<dd><p>zeros, <code class="docutils literal"><span class="pre">[mem_len,</span> <span class="pre">1]</span></code> – Part of write control.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv2.DNC.read_weights">
+<code class="descname">read_weights</code><a class="headerlink" href="#DNCv2.DNC.read_weights" title="Permalink to this definition">¶</a></dt>
+<dd><p>rand, <code class="docutils literal"><span class="pre">[mem_len,</span> <span class="pre">num_heads]</span></code> – Weight for reading
+memory.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv2.DNC.write_weights">
+<code class="descname">write_weights</code><a class="headerlink" href="#DNCv2.DNC.write_weights" title="Permalink to this definition">¶</a></dt>
+<dd><p>rand, <code class="docutils literal"><span class="pre">[mem_len,</span> <span class="pre">1]</span></code> – Weight for writing memory.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv2.DNC.read_vecs">
+<code class="descname">read_vecs</code><a class="headerlink" href="#DNCv2.DNC.read_vecs" title="Permalink to this definition">¶</a></dt>
+<dd><p>rand, <code class="docutils literal"><span class="pre">[num_heads,</span> <span class="pre">bit_len]</span></code> – Init read state.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv2.DNC.i_data">
+<code class="descname">i_data</code><a class="headerlink" href="#DNCv2.DNC.i_data" title="Permalink to this definition">¶</a></dt>
+<dd><p><code class="docutils literal"><span class="pre">[seq_len*2,</span> <span class="pre">input_size]</span></code> – Placeholder for inputs.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv2.DNC.o_data">
+<code class="descname">o_data</code><a class="headerlink" href="#DNCv2.DNC.o_data" title="Permalink to this definition">¶</a></dt>
+<dd><p><code class="docutils literal"><span class="pre">[seq_len*2,</span> <span class="pre">output_size]</span></code> – Placeholder for outputs.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="DNCv2.DNC.content_lookup">
+<em class="property">static </em><code class="descname">content_lookup</code><span class="sig-paren">(</span><em>memory</em>, <em>key</em>, <em>strength</em><span class="sig-paren">)</span><a class="headerlink" href="#DNCv2.DNC.content_lookup" title="Permalink to this definition">¶</a></dt>
+<dd><p>Lookup from memory.</p>
+<p>A key vector - emitted by controller - is compared
+to content of each location in memory according to
+a similarity measurement. The sim scores determine a
+weighting that can be used by the read heads for
+recall or by the write heads to modify memory.</p>
+<p>Corresponds to</p>
+<div class="math">
+\[\begin{split}D(u, v) &amp;= \frac{u \cdot v}{\lVert u \rVert \lVert v \rVert},\\
+C(M, k, \beta)[i] &amp;= \frac{exp(D(k,M[i,\cdot]) \beta)} {\sum_j(exp(D(k,M[j,\cdot]) \beta))}\end{split}\]</div>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="DNCv2.DNC.erase_and_write_memory">
+<em class="property">static </em><code class="descname">erase_and_write_memory</code><span class="sig-paren">(</span><em>old_memory</em>, <em>write_weights</em>, <em>erase_vec</em>, <em>write_vec</em><span class="sig-paren">)</span><a class="headerlink" href="#DNCv2.DNC.erase_and_write_memory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Erase and write the memory matrix.</p>
+<p>Comparing to the paper, we have</p>
+<div class="math">
+\[M_t = M_{t-1} \odot ( [[1]] - w^w_t (e_t)^T) + w^w_t (v_t)^T\]</div>
+<p>where <span class="math">\(w^w_t\)</span> is the computed write vector, <span class="math">\(e_t\)</span> is the
+emitted erase vector, and <span class="math">\(v_t\)</span> is the emitted write vector.
+Also, <span class="math">\([[1]]\)</span> denotes a matrix of ones.</p>
+<p>As for implementation, we sidestep the transposition by emitting
+<span class="math">\(e_t, v_t\)</span> as <code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">bit_len</span></code> and computing <span class="math">\(w^w_t\)</span> as
+<code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">1</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>old_memory</strong> – A matrix of size <code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">bit_len</span></code>.</li>
+<li><strong>write_weights</strong> – The computed write weighting corner-vector of size
+<code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">1</span></code>.</li>
+<li><strong>erase_vec</strong> – The emitted erase vector of size <code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">bit_len</span></code>.</li>
+<li><strong>write_vec</strong> – The emitted write vector of size <code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">bit_len</span></code>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The updated memory matrix.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="DNCv2.DNC.install_controller">
+<code class="descname">install_controller</code><span class="sig-paren">(</span><em>controller</em><span class="sig-paren">)</span><a class="headerlink" href="#DNCv2.DNC.install_controller" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the controller for the DNC.</p>
+<p>The input is expected to be a callable that maps from size
+<code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">nn_input_size</span></code> to size <code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">nn_output_size.</span></code> Recall
+that <code class="docutils literal"><span class="pre">nn_input_size</span> <span class="pre">=</span> <span class="pre">input_size</span> <span class="pre">+</span> <span class="pre">num_heads*bit_len</span></code> and
+that <code class="docutils literal"><span class="pre">nn_output_size</span> <span class="pre">=</span> <span class="pre">output_size</span> <span class="pre">+</span> <span class="pre">interface_size.</span></code> Note that
+the controller object is <cite>not</cite> responsible for emitting seperate
+prediction and interface vectors.</p>
+<p>The controller may be a function installed without <code class="docutils literal"><span class="pre">()</span></code> or
+an object with a <code class="docutils literal"><span class="pre">__call__</span></code> method. If the controller is an object,
+it may be initialized with DNC object attributes, especially
+<code class="docutils literal"><span class="pre">myDNC.nn_input_size</span></code> and <code class="docutils literal"><span class="pre">myDNC.nn_output_size</span></code>.</p>
+<p>As for mathematical discussion, the controller maps the time
+step input <span class="math">\(x_t\)</span> concatenated with the interpreted
+information read from memory by each head, <span class="math">\(r^i_{t-1}\)</span>,
+to the prediction and the interface vector. The interface vector
+controls the memory interactions. Precisely</p>
+<div class="math">
+\[\text{ctrlr}([x_t;r^1_{t-1};...;r^R_{t-1}]) \mapsto ([\hat{y}_t; \hat{\zeta}_t])\]</div>
+<p>where <span class="math">\(r^i_{t-1}\)</span> is the interpreted information from read vector
+<cite>i</cite> at the previous time step.</p>
+<p>To be clear, <span class="math">\([\cdot ; \cdot]\)</span> denotes concatenation
+and <span class="math">\([\hat{y}_t; \hat{\zeta}_t]\)</span> is the vector denoting
+the prediction evidence and the interface evidence. Outside
+the controller object, the DNC multiplies the vector emmited by
+the controller by the output weights <span class="math">\(W^y_t\)</span> and then
+again by the interface weights <span class="math">\(W^\zeta_t\)</span>. In other words,
+the DNC converts the <code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">nn_output_size</span> <span class="pre">=</span>
+<span class="pre">1</span> <span class="pre">x</span> <span class="pre">output_size</span> <span class="pre">+</span> <span class="pre">interface_size</span></code> vector to one prediction of length
+<code class="docutils literal"><span class="pre">output_size</span></code> and another interface vector of length
+<code class="docutils literal"><span class="pre">interface_size</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>controller</strong> – A callable to predict outputs and select
+interface variables. The controller must take only one
+argument, a tensor of size <code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">nn_input_size</span></code>,
+and return only one tensor of size <code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">nn_output_size.</span></code></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Examples</p>
+<p>We may use an initialized object:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">myDNC</span> <span class="o">=</span> <span class="n">DNC</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="n">controller</span> <span class="o">=</span> <span class="n">MLPClass</span><span class="p">(</span><span class="n">in_size</span><span class="o">=</span><span class="n">myDNC</span><span class="o">.</span><span class="n">nn_input_size</span><span class="p">,</span>
+                      <span class="n">out_size</span><span class="o">=</span><span class="n">myDNC</span><span class="o">.</span><span class="n">nn_output_size</span><span class="p">,</span>
+                      <span class="n">hidden_size</span><span class="o">=</span><span class="mi">32</span><span class="p">)</span>
+<span class="n">myDNC</span><span class="o">.</span><span class="n">install_controller</span><span class="p">(</span><span class="n">controller</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In this case, <code class="docutils literal"><span class="pre">controller</span></code> <cite>must</cite> have a __call__ method
+taking only one argument: the input to the DNC at that timestep
+concatenated with the <code class="docutils literal"><span class="pre">num_heads</span></code> read vectors.</p>
+<p>Or, we may use a function:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">net</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="c1"># x is [1, nn_input_size]</span>
+    <span class="o">...</span>
+    <span class="c1"># y is [1, nn_output_size]</span>
+    <span class="k">return</span> <span class="n">y</span>
+<span class="n">myDNC</span><span class="o">.</span><span class="n">install_controller</span><span class="p">(</span><span class="n">net</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="DNCv2.DNC.interface_partition">
+<code class="descname">interface_partition</code><span class="sig-paren">(</span><em>interface_vec</em>, <em>return_alloc_strength=None</em><span class="sig-paren">)</span><a class="headerlink" href="#DNCv2.DNC.interface_partition" title="Permalink to this definition">¶</a></dt>
+<dd><p>Partition the interface vector into the memory controls.</p>
+<p>We use a strided slicing approach. This allows for eventual
+extensibility to batches, as well as nice graph visualization.
+After partitioning, the controls are possibly reshaped and ran
+through activation functions to preserve their domain.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>                  <span class="n">VARIABLE</span> <span class="n">REFERENCE</span>
+  <span class="n">Num</span>     <span class="n">Key</span>           <span class="n">Math</span>    <span class="n">Length</span>   <span class="n">Domain</span>
+ <span class="o">------------------------------------------------------</span>
+   <span class="n">R</span>   <span class="n">read_keys</span>       <span class="n">k</span><span class="o">^</span><span class="n">r_t</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>   <span class="n">W</span>
+   <span class="n">R</span>   <span class="n">read_strengths</span>  <span class="n">B</span><span class="o">^</span><span class="n">r_t</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>   <span class="mi">1</span>     <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">inf</span><span class="p">)</span>
+  <span class="n">one</span>  <span class="n">write_key</span>       <span class="n">k</span><span class="o">^</span><span class="n">w_t</span>      <span class="n">W</span>
+  <span class="n">one</span>  <span class="n">write_strength</span>  <span class="n">B</span><span class="o">^</span><span class="n">w_t</span>      <span class="mi">1</span>     <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">inf</span><span class="p">)</span>
+  <span class="n">one</span>  <span class="n">erase_vec</span>       <span class="n">e_t</span>        <span class="n">W</span>     <span class="p">[</span><span class="mi">0</span> <span class="mi">1</span><span class="p">]</span>
+  <span class="n">one</span>  <span class="n">write_vec</span>       <span class="n">v_t</span>        <span class="n">W</span>
+   <span class="n">R</span>   <span class="n">free_gates</span>      <span class="n">f_t</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>     <span class="mi">1</span>     <span class="p">[</span><span class="mi">0</span> <span class="mi">1</span><span class="p">]</span>
+  <span class="n">one</span>  <span class="n">alloc_gate</span>      <span class="n">g</span><span class="o">^</span><span class="n">a_t</span>      <span class="mi">1</span>     <span class="p">[</span><span class="mi">0</span> <span class="mi">1</span><span class="p">]</span>
+<span class="p">[</span> <span class="n">one</span>  <span class="n">alloc_strength</span>  <span class="n">B</span><span class="o">^</span><span class="n">a_t</span>      <span class="mi">1</span>     <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">inf</span><span class="p">)</span>     <span class="p">]</span>
+  <span class="n">one</span>  <span class="n">write_gate</span>      <span class="n">g</span><span class="o">^</span><span class="n">w_t</span>      <span class="mi">1</span>     <span class="p">[</span><span class="mi">0</span> <span class="mi">1</span><span class="p">]</span>
+   <span class="n">R</span>   <span class="n">read_modes</span>      <span class="n">pi_t</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>    <span class="mi">3</span>     <span class="n">SOFTMAX</span> <span class="n">SIMPLEX</span>
+</pre></div>
+</div>
+<p>The variable reference table is provided to clarify the
+slicing operations. The reference helps with the obscure
+implementation, and so too does the TensorBoard graph.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>interface_vec</strong> (<code class="docutils literal"><span class="pre">[1,</span> <span class="pre">interface_size]</span></code>) – The memory interface
+values.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A dictionary with key-value pairs as described in
+the chart. Notice “Key” in the chart corresponds to
+keys for the return dict.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="DNCv2.DNC.read_memory">
+<em class="property">static </em><code class="descname">read_memory</code><span class="sig-paren">(</span><em>memory_matrix</em>, <em>read_weights</em><span class="sig-paren">)</span><a class="headerlink" href="#DNCv2.DNC.read_memory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read off memory.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>memory_matrix</strong> – The <code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">bit_len</span></code> memory matrix.</li>
+<li><strong>read_weights</strong> – The <code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> corner-vector for each read head,
+making an effective shape of <code class="docutils literal"><span class="pre">num_heads</span> <span class="pre">x</span> <span class="pre">mem_len</span></code>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><dl class="docutils">
+<dt>The read (past tense) real-valued vectors of size <code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">bit_len</span></code></dt>
+<dd><p class="first last">for each read head, making an effective shape of
+<code class="docutils literal"><span class="pre">num_heads</span> <span class="pre">x</span> <span class="pre">bit_len</span></code>.</p>
+</dd>
+</dl>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="DNCv2.DNC.softmax_allocation_weighting">
+<em class="property">static </em><code class="descname">softmax_allocation_weighting</code><span class="sig-paren">(</span><em>usage_vec</em>, <em>alloc_strength</em><span class="sig-paren">)</span><a class="headerlink" href="#DNCv2.DNC.softmax_allocation_weighting" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve the writing allocation weight.</p>
+<p>The ‘usage’ is a number between 0 and 1. The <cite>nonusage</cite> is
+then computed by subtracting 1 from usage. Afterwards, we
+sharpen the <cite>nonusage</cite> to serve as the allocation weighting.</p>
+<p>As for interpretation, the <code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> allocation weighting has
+a weight for each <cite>bit</cite> in the memory matrix. The value of the
+entry, in <cite>[0, 1]</cite>, controls how much the write head may alter
+the bit corresponding with that entry.</p>
+<p>The original paper proposed write allocation based on
+a tricky nondifferentiable sorting operation. This code implements
+allocation using a softmax operation instead, as proposed by
+Ben-Ari, I., Bekker, A. J., [2017] in “Differentiable Memory
+Allocation Mechanism For Neural Computing.”</p>
+<p>In practice, the usage vector may become negative. This
+may be due to numerical error or may be a result of the softmax.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>usage_vec</strong> – The <code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">1</span></code> corner-vector.</li>
+<li><strong>alloc_strength</strong> – A learned parameter from the interface in
+<code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1]</span></code>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Calculated allocation weights.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="DNCv2.DNC.sorting_allocation_weighting">
+<code class="descname">sorting_allocation_weighting</code><span class="sig-paren">(</span><em>usage_vec</em><span class="sig-paren">)</span><a class="headerlink" href="#DNCv2.DNC.sorting_allocation_weighting" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve the writing allocation weight.</p>
+<p>The ‘usage’ is a number between 0 and 1. The <cite>nonusage</cite> is
+then computed by subtracting 1 from usage. Afterwards, we
+sharpen the <cite>nonusage</cite> to serve as the allocation weighting.</p>
+<p>As for interpretation, the <code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> allocation weighting has
+a weight for each <cite>bit</cite> in the memory matrix. The value of the
+entry, in <cite>[0, 1]</cite>, controls how much the write head may alter
+the bit corresponding with that entry.</p>
+<p>First, we sort the indices, comprising</p>
+<div class="math">
+\[\phi_t = \text{SortIndicesAscending(u_t)}\]</div>
+<p>In practice, we use TensorFlow’s built-in sorting, giving us
+<span class="math">\(\phi_t\)</span> <code class="docutils literal"><span class="pre">=</span> <span class="pre">freelist</span></code>. Since <code class="docutils literal"><span class="pre">tf.nn.top_k</span></code> sorts
+descendingly by default, we sort <code class="docutils literal"><span class="pre">nonusage</span></code>, returning
+<code class="docutils literal"><span class="pre">sorted_nonusage</span></code> in addition to <code class="docutils literal"><span class="pre">freelist</span></code>.</p>
+<p>Then, comparing to the paper we have</p>
+<div class="math">
+\[a_t[\phi_t[j]] = (1 - u_t[phi_t[j]]) \prod_{i=1}^{j-1} u_t[phi_t[i]].\]</div>
+<p>Implementing this, notice that <span class="math">\((1 - u_t[phi_t[j]])\)</span>
+<code class="docutils literal"><span class="pre">=</span> <span class="pre">sorted_nonusage[j]</span></code>. Then see that
+<span class="math">\(\prod_{i=1}^{j-1} u_t[phi_t[i]]\)</span> can be computed for all
+<cite>j</cite> using an exclusive cumprod. (Note that it is assumed when <cite>j=1,</cite>
+the term is <cite>1</cite>.) Then, we calculate <code class="docutils literal"><span class="pre">sorted_alloc</span></code>, meaning <cite>in
+order</cite>, by element-wise multiplying <code class="docutils literal"><span class="pre">sorted_nonusage</span></code> and our
+cumulative product vector. Finally, we revert the allocation
+weighting to the original ordering. We gather the <code class="docutils literal"><span class="pre">freelist</span></code>
+entries of <code class="docutils literal"><span class="pre">sorted_alloc</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>usage_vec</strong> – The <code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">1</span></code> corner-vector.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Calculated allocation weights.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="DNCv2.DNC.timestep_out">
+<code class="descname">timestep_out</code><span class="sig-paren">(</span><em>nn_out</em>, <em>read_vecs</em>, <em>reuse</em><span class="sig-paren">)</span><a class="headerlink" href="#DNCv2.DNC.timestep_out" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct the output y_t from the nn_out and read memory.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="DNCv2.DNC.update_precedence">
+<em class="property">static </em><code class="descname">update_precedence</code><span class="sig-paren">(</span><em>prev_precedence</em>, <em>write_weights</em><span class="sig-paren">)</span><a class="headerlink" href="#DNCv2.DNC.update_precedence" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the precedence weight vector.</p>
+<p>Comparing to the paper, we have</p>
+<div class="math">
+\[p_t = [ 1 - \sum_{i} (w^w_t[i]) ] p_{t-1} + w^w_t,\]</div>
+<p>which is implemented exactly as written.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>prev_precedence</strong> – The old <code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">1</span></code> corner-vector.</li>
+<li><strong>write_weights</strong> – The current <code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">1</span></code> corner-vector.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The updated precedence weighting.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="DNCv2.DNC.update_read_weights">
+<em class="property">static </em><code class="descname">update_read_weights</code><span class="sig-paren">(</span><em>prev_read_weights</em>, <em>link_mat</em>, <em>read_content_lookup</em>, <em>read_modes</em><span class="sig-paren">)</span><a class="headerlink" href="#DNCv2.DNC.update_read_weights" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the read weights.</p>
+<p>Comparing to the paper, we have</p>
+<div class="math">
+\[w^{r,i}_t = \pi^i_t[1]b^i_t + \pi^i_t[2]c^{r,i}_t + \pi^i_t[3]f^1_t\]</div>
+<p>where <span class="math">\(w^{r,i}_t\)</span> is the read weight for read head <span class="math">\(i\)</span>,
+<span class="math">\(pi^i_t\)</span> is the read mode vector for read head <span class="math">\(i,\)</span> and</p>
+<div class="math">
+\[\begin{split}f^1_t &amp;= L_t w^{r,i}_{t-1}, \\
+b^i_t &amp;= (L_t)^T w^{r,i}_{t-1} \text{ and } \\
+c^{r,i}_t &amp;= C(M_t, k^{r,i}_t, \beta^{r,i}_t). \\\end{split}\]</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>prev_read_weights</strong> – The old <code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">1</span></code> corner-vector for each
+read head, making an effective shape of <code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span>
+<span class="pre">num_heads</span></code>.</li>
+<li><strong>link_mat</strong> – The current <code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> temporal link matrix.</li>
+<li><strong>read_content_lookup</strong> – The <code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">1</span></code> corner-vector for each
+read head, making an effective shape of <code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span>
+<span class="pre">num_heads</span></code>.</li>
+<li><strong>read_modes</strong> – The <code class="docutils literal"><span class="pre">3</span> <span class="pre">x</span> <span class="pre">1</span></code> unit vector for each read head,
+making an effective shape of <code class="docutils literal"><span class="pre">3</span> <span class="pre">x</span> <span class="pre">num_heads</span></code>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The new read weights.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="DNCv2.DNC.update_temporal_link">
+<code class="descname">update_temporal_link</code><span class="sig-paren">(</span><em>prev_link_mat</em>, <em>write_weights</em>, <em>prev_precedence</em><span class="sig-paren">)</span><a class="headerlink" href="#DNCv2.DNC.update_temporal_link" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the temporal link matrix.</p>
+<p>Comparing to the paper, we have</p>
+<div class="math">
+\[\begin{split}L_t[i,j] &amp;= (1-w^w_t[i]-w^w_t[j]) L_{t-1}[i,j] + w^w_t[i] p_{t-1}[j] \\
+L_t[i,i] &amp;= 0\end{split}\]</div>
+<p>where <span class="math">\(w^w_t\)</span> is the write weight corner-vector and <span class="math">\(p_t\)</span>
+is the precedence corner-vector.</p>
+<p>The actual implementation is different. Instead we broadcast
+write_weights into a <code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> matrix <code class="docutils literal"><span class="pre">expanded_weights</span></code>
+of the form</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="p">[[</span> <span class="n">w</span><span class="o">^</span><span class="n">w</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>    <span class="n">w</span><span class="o">^</span><span class="n">w</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>    <span class="o">...</span>  <span class="n">w</span><span class="o">^</span><span class="n">w</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>    <span class="p">]</span>
+ <span class="p">[</span> <span class="n">w</span><span class="o">^</span><span class="n">w</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>    <span class="n">w</span><span class="o">^</span><span class="n">w</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>    <span class="o">...</span>  <span class="n">w</span><span class="o">^</span><span class="n">w</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>    <span class="p">]</span>
+ <span class="o">...</span>
+ <span class="p">[</span> <span class="n">w</span><span class="o">^</span><span class="n">w</span><span class="p">[</span><span class="n">m</span><span class="o">.</span><span class="n">l</span><span class="o">.</span><span class="p">]</span> <span class="n">w</span><span class="o">^</span><span class="n">w</span><span class="p">[</span><span class="n">m</span><span class="o">.</span><span class="n">l</span><span class="o">.</span><span class="p">]</span> <span class="o">...</span>  <span class="n">w</span><span class="o">^</span><span class="n">w</span><span class="p">[</span><span class="n">m</span><span class="o">.</span><span class="n">l</span><span class="o">.</span><span class="p">]</span> <span class="p">]],</span>
+</pre></div>
+</div>
+<p>then performing <code class="docutils literal"><span class="pre">1</span> <span class="pre">-</span> <span class="pre">expanded_weights</span> <span class="pre">-</span> <span class="pre">transpose(expanded_weights)</span></code>.
+Then we element-wise multiply the previous temporal link matrix.
+At this point we have <span class="math">\((1 - w^w_t[i]-w^w_t[j]) L_{t-1}[i,j]\)</span>
+for all <span class="math">\(i,j.\)</span></p>
+<p>Then, we multiply the write weights by the precedence weights and
+add to the previous operations. This comprises
+<span class="math">\(... + w^w_t[i] p_{t-1}[j]\)</span> for all <span class="math">\(i,j.\)</span>.</p>
+<p>Finally, we subtract our result from an identity matrix to
+eliminate self-links in the temporal link matrix.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>prev_link_mat</strong> – The old <code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> temporal link matrix.</li>
+<li><strong>write_weights</strong> – The <code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">1</span></code> write weighting corner-vector.</li>
+<li><strong>prev_precedence</strong> – The <code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">1</span></code> precedence corner-vector.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The new temporal link matrix.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="DNCv2.DNC.update_write_weights">
+<em class="property">static </em><code class="descname">update_write_weights</code><span class="sig-paren">(</span><em>alloc_weights</em>, <em>write_content_lookup</em>, <em>alloc_gate</em>, <em>write_gate</em><span class="sig-paren">)</span><a class="headerlink" href="#DNCv2.DNC.update_write_weights" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update write weights to reflect allocation decisions.</p>
+<p>Comparing to the formula, we have</p>
+<div class="math">
+\[g^w_t[g^a_t a_t + (1 - g^a_t)c^w_t]\]</div>
+<p>where <span class="math">\(g^a_t\)</span> in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1]</span></code> is the allocation gate, <span class="math">\(a_t\)</span>
+is the allocation corner-vector, <span class="math">\(g^w_t\)</span> in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1]</span></code> is the
+write gate, <span class="math">\((1 - g^a_t)\)</span> is the “unallocation gate,” and
+<span class="math">\(c^w_t\)</span> is the writing content lookup.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>alloc_weights</strong> – The tensor of size <code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">1</span></code>.</li>
+<li><strong>write_content_lookup</strong> – A unit vector of size <code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">1</span></code>.</li>
+<li><strong>write_gate</strong> – A scalar in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1]</span></code>.</li>
+<li><strong>alloc_gate</strong> – A scalar in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1]</span></code>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The new write weights, a corner-vector of size <code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">1</span></code>.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="DNCv2.DNC.usage_update">
+<em class="property">static </em><code class="descname">usage_update</code><span class="sig-paren">(</span><em>prev_usage_vec</em>, <em>write_weights</em>, <em>read_weights</em>, <em>free_gates</em><span class="sig-paren">)</span><a class="headerlink" href="#DNCv2.DNC.usage_update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the usage vector.</p>
+<p>Comparing to the paper,</p>
+<div class="math">
+\[u_t = (u_{t-1} + w^w_{t-1} - (u_{t-1} \odot w^w_{t-1})) \odot \psi_t\]</div>
+<p>such that</p>
+<div class="math">
+\[\psi_t = \prod_{i=1}^R (1-f^i_t w^{r,i}_{t-1}).\]</div>
+<p>Notice that <span class="math">\(f^i_t\)</span> is the ith of <code class="docutils literal"><span class="pre">num_heads</span></code> free gates
+emitted by the controller. Each free gate is in <code class="docutils literal"><span class="pre">[0,1]</span></code>. And,
+<span class="math">\(w^w_{t-1}\)</span> is the old computed write weight vector. Finally,
+<span class="math">\(w^{r,i}_{t-1}\)</span> is the old computed read weight.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>prev_usage_vec</strong> – A real valued usage vector of shape
+<code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">mem_len</span></code>.</li>
+<li><strong>write_weights</strong> – A corner-vector (weaker all-positive unit vector)
+of shape <code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">1</span></code>.</li>
+<li><strong>read_weights</strong> – A corner-vector (weaker all-positive unit vector)
+of shape <code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">1</span></code> for each head, making an effective
+shape of <code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">num_heads</span></code>.</li>
+<li><strong>free_gates</strong> – A vector of shape <code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">num_heads</span></code> with each element
+in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1]</span></code>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The new usage vector according to the above formulae.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, Dylan Flaute.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
