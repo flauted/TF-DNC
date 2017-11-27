@@ -16,7 +16,7 @@ class DNC:
     Comparing to the paper glossary available at
     https://www.readcube.com/articles/supplement?doi=10.1038%2Fnature20101&index=12&ssl=1&st=acd80c7ede3649cb0f4345bcdc01ec12&preview=1
     we have ::
-        
+
         W <=> bit_len (memory word size)
         N <=> mem_len (number of memory locations)
         R <=> num_heads (number of read heads)
@@ -30,6 +30,7 @@ class DNC:
         mem_len (int, 256): Number of slots in memory.
         bit_len (int, 64): Length of a slot in memory.
         num_heads (int, 4): Number of read heads.
+        batch_size (int, 1): Length of the batch.
         softmax_allocation (bool, True): Use the alternative softmax writing
             allocation or the original formulation.
 
@@ -39,6 +40,7 @@ class DNC:
         mem_len (arg)
         bit_len (arg)
         num_heads (arg)
+        batch_size (arg)
         softmax_allocation (arg)
         interface_size (``num_heads*bit_len + 3*bit_len + 5*num_heads + 3``):
             Size of emitted interface vector.
@@ -51,16 +53,23 @@ class DNC:
               NOTE: If you need ``nn_input_size`` or ``nn_output_size`` to
               define the controller, use `myDNC.install_controller(callable)`
               after initializing myDNC.
-        mem (zeros, ``[mem_len, bit_len]``): The internal memory matrix.
-        usage_vec (zeros, ``[mem_len, 1]``): The usage vector, vec{u_t}.
-        link_mat (zeros, ``[mem_len, mem_len]``): The temporal link matrix.
-        precedence_weight (zeros, ``[mem_len, 1]``): Part of write control.
-        read_weights (rand, ``[mem_len, num_heads]``): Weight for reading
-            memory.
-        write_weights (rand, ``[mem_len, 1]``): Weight for writing memory.
-        read_vecs (rand, ``[num_heads, bit_len]``): Init read state.
-        i_data (``[seq_len*2, input_size]``): Placeholder for inputs.
-        o_data (``[seq_len*2, output_size]``): Placeholder for outputs.
+        mem (zeros, ``[batch_size, mem_len, bit_len]``): The internal
+            memory matrix.
+        usage_vec (zeros, ``[batch_size, mem_len]``): The usage vector.
+        link_mat (zeros, ``[batch_size, mem_len, mem_len]``): The temporal
+            link matrix.
+        precedence_weight (zeros, ``[batch_size, mem_len]``): Part of write
+            control.
+        read_weights (+~zeros, ``[batch_size, mem_len, num_heads]``): Weight
+            for reading memory.
+        write_weights (rand, ``[batch_size, mem_len]``): Weight for
+            writing memory.
+        read_vecs (rand, ``[batch_size, bit_len, num_heads]``): Init
+            read state.
+        i_data (``[batch_size, seq_len*2, input_size]``): Placeholder for
+            inputs.
+        o_data (``[batch_size, seq_len*2, output_size]``): Placeholder for
+            outputs.
 
     """
 
@@ -89,29 +98,29 @@ class DNC:
         self.nn_input_size = num_heads * bit_len + input_size
         self.nn_output_size = output_size + self.interface_size
         self.controller = controller
-        # M_t is N x W
         with tf.variable_scope("DNC/Mem_Man/zero_state"):
             self.mem = tf.zeros(
                 [batch_size, mem_len, bit_len], name="memory")
             # u is N x 1
             self.usage_vec = tf.zeros([batch_size, mem_len], name="usage_vec")
             # L is N x N
-            self.link_mat = tf.zeros([batch_size, mem_len, mem_len], name="link_mat")
+            self.link_mat = tf.zeros(
+                [batch_size, mem_len, mem_len],
+                name="link_mat")
             # p is N x 1
             self.precedence_weight = tf.zeros(
                 [batch_size, mem_len], name="precedence_weight")
 
             # HEAD VARIABLES
-            # w^r is N x R => w^{r,i} is N x 1
             self.read_weights = tf.fill(
                 [batch_size, mem_len, num_heads], 1e-6, name="read_weights")
-            # w^w is N x 1
             self.write_weights = tf.fill(
                 [batch_size, mem_len], 1e-6, name="write_weights")
-            # r_t is R x W => r_t^{i} is 1 x W
         with tf.variable_scope("DNC/zero_state/read_vec"):
             self.read_vecs = tf.truncated_normal(
-                    [batch_size, bit_len, num_heads], stddev=0.1, name="read_vec")
+                    [batch_size, bit_len, num_heads],
+                    stddev=0.1,
+                    name="read_vec")
 
         # NETWORK VARIABLES
         self.i_data = tf.placeholder(
@@ -201,15 +210,16 @@ class DNC:
         and the weighted vectors read from memory.
 
         Args:
-            x ([1, input_size]): The seq sample at the current timestep.
+            x ([batch_size, input_size]): The seq sample at the current
+                timestep.
             read_vecs: Vectors interpreted from memory. Must be
-                reshapable to [1, num_heads*bit_len]. (From the paper,
+                reshapable to [batch_size, num_heads*bit_len]. (From the paper,
                 `read_vecs` would be [num_heads, bit_len].)
         Returns:
             The predicted mapping for `x_t', a tensor of shape
-                [1, output_size].
+                [batch_size, output_size].
             The memory interface values, a tensor of shape
-                [1, interface_size].
+                [batch_size, interface_size].
 
         """
         with tf.variable_scope("DNC/x_r_cat/"):
@@ -247,27 +257,33 @@ class DNC:
         through activation functions to preserve their domain. ::
 
                               VARIABLE REFERENCE
-              Num     Key           Math    Length   Domain
+              Key             Math       Shape*      Domain
              ------------------------------------------------------
-               R   read_keys       k^r_t[i]   W
-               R   read_strengths  B^r_t[i]   1     [0, inf)
-              one  write_key       k^w_t      W
-              one  write_strength  B^w_t      1     [0, inf)
-              one  erase_vec       e_t        W     [0 1]
-              one  write_vec       v_t        W
-               R   free_gates      f_t[i]     1     [0 1]
-              one  alloc_gate      g^a_t      1     [0 1]
-            [ one  alloc_strength  B^a_t      1     [0, inf)     ]
-              one  write_gate      g^w_t      1     [0 1]
-               R   read_modes      pi_t[i]    3     SOFTMAX SIMPLEX
+              read_keys       k^r_t[i]   B x R x W
+              read_strengths  B^r_t[i]   B x 1 x R   [0, inf)
+              write_key       k^w_t      B x 1 x W
+              write_strength  B^w_t      B x 1       [0, inf)
+              erase_vec       e_t        B x W       [0 1]
+              write_vec       v_t        B x W
+              free_gates      f_t[i]     B x 1 x R   [0 1]
+              alloc_gate      g^a_t      B x 1       [0 1]
+            [ alloc_strength  B^a_t      B x 1       [0, inf)     ]+
+              write_gate      g^w_t      B x 1       [0 1]
+              read_modes      pi_t[i]    B x 3 x 4   SOFTMAX SIMPLEX
+
+        *B stands for ``batch_size``, R for ``num_heads``, and W
+        for ``bit_len`` (consistent with paper). Index ``[i]`` corresponds to
+        dimension with size R.
+
+        +Only emitted when ``softmax_allocation`` is true.
 
         The variable reference table is provided to clarify the
         slicing operations. The reference helps with the obscure
         implementation, and so too does the TensorBoard graph.
 
         Args:
-            interface_vec (``[1, interface_size]``): The memory interface
-                values.
+            interface_vec (``[batch_size, interface_size]``): The memory
+                interface values.
 
         Returns:
             A dictionary with key-value pairs as described in
@@ -390,14 +406,14 @@ class DNC:
 
         Args:
             prev_usage_vec: A real valued usage vector of shape
-                ``1 x mem_len``.
+                ``batch_size x mem_len``.
             write_weights: A corner-vector (weaker all-positive unit vector)
-                of shape ``mem_len x 1``.
+                of shape ``batch_size x mem_len``.
             read_weights: A corner-vector (weaker all-positive unit vector)
-                of shape ``mem_len x 1`` for each head, making an effective
-                shape of ``mem_len x num_heads``.
-            free_gates: A vector of shape ``1 x num_heads`` with each element
-                in ``[0, 1]``.
+                of shape ``batch_size x mem_len x 1`` for each head,
+                making an effective shape of ``mem_len x num_heads``.
+            free_gates: A vector of shape ``batch_size x 1 x num_heads``
+                with each element in ``[0, 1]``.
         Returns:
             The new usage vector according to the above formulae.
 
@@ -416,28 +432,28 @@ class DNC:
     def softmax_allocation_weighting(usage_vec, alloc_strength):
         """Retrieve the writing allocation weight.
 
-        The 'usage' is a number between 0 and 1. The `nonusage` is 
-        then computed by subtracting 1 from usage. Afterwards, we 
-        sharpen the `nonusage` to serve as the allocation weighting. 
-        
+        The 'usage' is a number between 0 and 1. The `nonusage` is
+        then computed by subtracting 1 from usage. Afterwards, we
+        sharpen the `nonusage` to serve as the allocation weighting.
+
         As for interpretation, the ``1 x mem_len`` allocation weighting has
         a weight for each `bit` in the memory matrix. The value of the
         entry, in `[0, 1]`, controls how much the write head may alter
         the bit corresponding with that entry.
 
         The original paper proposed write allocation based on
-        a tricky nondifferentiable sorting operation. This code implements 
-        allocation using a softmax operation instead, as proposed by 
-        Ben-Ari, I., Bekker, A. J., [2017] in "Differentiable Memory 
+        a tricky nondifferentiable sorting operation. This code implements
+        allocation using a softmax operation instead, as proposed by
+        Ben-Ari, I., Bekker, A. J., [2017] in "Differentiable Memory
         Allocation Mechanism For Neural Computing."
 
         In practice, the usage vector may become negative. This
         may be due to numerical error or may be a result of the softmax.
 
         Args:
-            usage_vec: The ``mem_len x 1`` corner-vector.
-            alloc_strength: A learned parameter from the interface in
-                ``[0, 1]``.
+            usage_vec: The ``batch_size x mem_len`` corner-vector.
+            alloc_strength: A learned parameter from the interface of
+                shape ``batch_size x 1`` in ``[0, 1]``.
 
         Returns:
             Calculated allocation weights.
@@ -450,17 +466,17 @@ class DNC:
     def sorting_allocation_weighting(self, usage_vec):
         r"""Retrieve the writing allocation weight.
 
-        The 'usage' is a number between 0 and 1. The `nonusage` is 
-        then computed by subtracting 1 from usage. Afterwards, we 
-        sharpen the `nonusage` to serve as the allocation weighting. 
-        
+        The 'usage' is a number between 0 and 1. The `nonusage` is
+        then computed by subtracting 1 from usage. Afterwards, we
+        sharpen the `nonusage` to serve as the allocation weighting.
+
         As for interpretation, the ``1 x mem_len`` allocation weighting has
         a weight for each `bit` in the memory matrix. The value of the
         entry, in `[0, 1]`, controls how much the write head may alter
         the bit corresponding with that entry.
 
         First, we sort the indices, comprising
-        
+
         .. math::
 
             \phi_t = \text{SortIndicesAscending(u_t)}
@@ -476,18 +492,18 @@ class DNC:
 
             a_t[\phi_t[j]] = (1 - u_t[phi_t[j]]) \prod_{i=1}^{j-1} u_t[phi_t[i]].
 
-        Implementing this, notice that :math:`(1 - u_t[phi_t[j]])` 
-        ``= sorted_nonusage[j]``. Then see that 
+        Implementing this, notice that :math:`(1 - u_t[phi_t[j]])`
+        ``= sorted_nonusage[j]``. Then see that
         :math:`\prod_{i=1}^{j-1} u_t[phi_t[i]]` can be computed for all
         `j` using an exclusive cumprod. (Note that it is assumed when `j=1,`
         the term is `1`.) Then, we calculate ``sorted_alloc``, meaning `in
         order`, by element-wise multiplying ``sorted_nonusage`` and our
         cumulative product vector. Finally, we revert the allocation
-        weighting to the original ordering. We gather the ``freelist`` 
+        weighting to the original ordering. We gather the ``freelist``
         entries of ``sorted_alloc``.
 
         Args:
-            usage_vec: The ``mem_len x 1`` vector.
+            usage_vec: The ``batch_size x mem_len`` vector.
 
         Returns:
             Calculated allocation weights.
@@ -525,13 +541,17 @@ class DNC:
         :math:`c^w_t` is the writing content lookup.
 
         Args:
-            alloc_weights: The tensor of size ``mem_len x 1``.
-            write_content_lookup: A unit vector of size ``mem_len x 1``.
-            write_gate: A scalar in ``[0, 1]``.
-            alloc_gate: A scalar in ``[0, 1]``.
+            alloc_weights: The tensor of size ``batch_size x mem_len``.
+            write_content_lookup: A unit vector of size
+                ``batch_size x mem_len``.
+            write_gate: A scalar in ``[0, 1]`` for each batch entry having
+                shape ``batch_size x 1``.
+            alloc_gate: A scalar in ``[0, 1]`` for each batch entry having
+                shape ``batch_size x 1``.
 
         Returns:
-            The new write weights, a corner-vector of size ``mem_len x 1``.
+            The new write weights, a corner-vector of size
+                ``batch_size x mem_len``.
 
         """
         scaled_alloc = tf.multiply(
@@ -567,16 +587,18 @@ class DNC:
         emitted erase vector, and :math:`v_t` is the emitted write vector.
         Also, :math:`[[1]]` denotes a matrix of ones.
 
-        As for implementation, we sidestep the transposition by emitting
-        :math:`e_t, v_t` as ``1 x bit_len`` and computing :math:`w^w_t` as
-        ``mem_len x 1``.
+        As for implementation, we sidestep the transposition by expanding
+        :math:`e_t, v_t` to ``batch_size x 1 x bit_len`` and expanding
+        :math:`w^w_t` as ``batch_size x mem_len x 1``.
 
         Args:
             old_memory: A matrix of size ``mem_len x bit_len``.
             write_weights: The computed write weighting corner-vector of size
                 ``mem_len x 1``.
-            erase_vec: The emitted erase vector of size ``1 x bit_len``.
-            write_vec: The emitted write vector of size ``1 x bit_len``.
+            erase_vec: The emitted erase vector of size
+                ``batch_size x bit_len``.
+            write_vec: The emitted write vector of size
+                ``batch_size x bit_len``.
         Returns:
             The updated memory matrix.
 
@@ -612,8 +634,8 @@ class DNC:
         is the precedence corner-vector.
 
         The actual implementation is different. Instead we broadcast
-        write_weights into a ``mem_len x mem_len`` matrix ``expanded_weights``
-        of the form ::
+        write_weights into a ``(batch_size) x mem_len x mem_len``
+        matrix ``expanded_weights`` of the form ::
 
             [[ w^w[1]    w^w[1]    ...  w^w[1]    ]
              [ w^w[2]    w^w[2]    ...  w^w[2]    ]
@@ -633,9 +655,12 @@ class DNC:
         eliminate self-links in the temporal link matrix.
 
         Args:
-            prev_link_mat: The old ``mem_len x mem_len`` temporal link matrix.
-            write_weights: The ``mem_len x 1`` write weighting corner-vector.
-            prev_precedence: The ``mem_len x 1`` precedence corner-vector.
+            prev_link_mat: The old ``batch_size x mem_len x mem_len``
+                temporal link matrix.
+            write_weights: The ``batch_size x mem_len`` write weighting
+                corner-vector.
+            prev_precedence: The ``batch_size x mem_len`` precedence
+                corner-vector.
 
         Returns:
             The new temporal link matrix.
@@ -652,7 +677,8 @@ class DNC:
                 tf.ones([3, 1, self.mem_len]),
                 name="expanded_write_weights")
             first_part = tf.multiply(
-                (1. - expanded_weights - tf.transpose(expanded_weights, [0, 2, 1])),
+                (1. - expanded_weights - tf.transpose(
+                    expanded_weights, [0, 2, 1])),
                 prev_link_mat,
                 name="first_part")
             second_part = tf.matmul(
@@ -666,7 +692,7 @@ class DNC:
 
     @staticmethod
     def update_precedence(prev_precedence, write_weights):
-        """Update the precedence weight vector.
+        r"""Update the precedence weight vector.
 
         Comparing to the paper, we have
 
@@ -677,8 +703,8 @@ class DNC:
         which is implemented exactly as written.
 
         Args:
-            prev_precedence: The old ``mem_len x 1`` corner-vector.
-            write_weights: The current ``mem_len x 1`` corner-vector.
+            prev_precedence: The old ``batch_size x mem_len`` corner-vector.
+            write_weights: The current ``batch_size x mem_len`` corner-vector.
 
         Returns:
             The updated precedence weighting.
@@ -711,15 +737,17 @@ class DNC:
             c^{r,i}_t &= C(M_t, k^{r,i}_t, \beta^{r,i}_t). \\
 
         Args:
-            prev_read_weights: The old ``mem_len x 1`` corner-vector for each
-                read head, making an effective shape of ``mem_len x
-                num_heads``.
-            link_mat: The current ``mem_len x mem_len`` temporal link matrix.
-            read_content_lookup: The ``mem_len x 1`` corner-vector for each
-                read head, making an effective shape of ``mem_len x
-                num_heads``.
-            read_modes: The ``3 x 1`` unit vector for each read head,
-                making an effective shape of ``3 x num_heads``.
+            prev_read_weights: The old ``batch_size x mem_len`` corner-vector
+                for each read head, making an effective shape of ``batch_size x
+                mem_len x num_heads``.
+            link_mat: The current ``batch_size x mem_len x mem_len`` temporal
+                link matrix.
+            read_content_lookup: The ``batch_size x mem_len x 1`` corner-vector
+                for each read head, making an effective shape of
+                ``batch_size x mem_len x num_heads``.
+            read_modes: The ``batch_size x 3 x 1`` unit vector for each
+                read head, making an effective shape of
+                ``batch_size x 3 x num_heads``.
 
         Returns:
             The new read weights.
@@ -749,14 +777,16 @@ class DNC:
         """Read off memory.
 
         Args:
-            memory_matrix: The ``mem_len x bit_len`` memory matrix.
-            read_weights: The ``1 x mem_len`` corner-vector for each read head,
-                making an effective shape of ``num_heads x mem_len``.
+            memory_matrix: The ``batch_size x mem_len x bit_len`` memory
+                matrix.
+            read_weights: The ``batch_size x mem_len`` corner-vector for
+                each read head, making an effective shape of 
+                ``num_heads x mem_len``.
 
         Returns:
-            The read (past tense) real-valued vectors of size ``1 x bit_len``
-                for each read head, making an effective shape of
-                ``num_heads x bit_len``.
+            The read (past tense) real-valued vectors of size 
+                ``batch_size x 1 x bit_len`` for each read head, making 
+                an effective shape of ``batch_size x num_heads x bit_len``.
 
         """
         with tf.variable_scope("READ"):
@@ -765,7 +795,8 @@ class DNC:
                         memory_matrix,
                         read_weights,
                         transpose_a=True,
-                        name="weighted_read")),
+                        name="weighted_read"),
+                    [0, 2, 1]),
         return read_vecs
 
     def _interact_with_memory(self, nn_out, interface_vec, reuse):
@@ -873,7 +904,7 @@ class DNC:
                 seq_prediction.append(y_t)
             with tf.variable_scope("prediction/"):
                 concat_output = tf.stack(
-                    seq_prediction, axis=0, name="collect_out")
+                    seq_prediction, axis=1, name="collect_out")
                 squeeze_output = tf.squeeze(concat_output)
         return squeeze_output
 
