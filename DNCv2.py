@@ -674,7 +674,7 @@ class DNC:
                 prev_precedence, 1, name="prev_precedence")
             expanded_weights = tf.matmul(
                 write_weights,
-                tf.ones([3, 1, self.mem_len]),
+                tf.ones([self.batch_size, 1, self.mem_len]),
                 name="expanded_write_weights")
             first_part = tf.multiply(
                 (1. - expanded_weights - tf.transpose(

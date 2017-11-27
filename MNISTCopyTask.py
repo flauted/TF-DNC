@@ -18,14 +18,17 @@ from DNCv2 import DNC
 class ConvModel:
     """A simple convolutional neural network to be used as a controller."""
 
-    def __init__(self, input_size, output_size, read_vec_size):  # NOQA
+    def __init__(self, input_size, output_size, read_vec_size, batch_size):  # NOQA
         self.input_size = input_size
         self.output_size = output_size
         self.read_vec_size = read_vec_size
+        self.batch_size = batch_size
 
     def __call__(self, inputs):
         """Control the DNC."""
-        input_imgs = tf.reshape(inputs[:, :28*28], [3, 1, 28, 28])
+        input_imgs = tf.reshape(
+            inputs[:, :28*28],
+            [self.batch_size, 1, 28, 28])
         read_vecs = inputs[:, 28*28:]
         with tf.variable_scope("L1"):
             K1 = tf.get_variable(
@@ -67,7 +70,7 @@ class ConvModel:
             self.K2 = K2
             self.b2 = b2
         with tf.variable_scope("FC1"):
-            conv_out = tf.reshape(l2_act, [3, 64*4*4])
+            conv_out = tf.reshape(l2_act, [self.batch_size, 64*4*4])
             fc1_input = tf.concat([conv_out, read_vecs], axis=1)
             W = tf.get_variable(
                 "fc1_weights",
@@ -128,10 +131,11 @@ def main(argv=None):
     """Run training loop."""
     seq_len = 5
     seq_width = 10  # seems to be bit_len
-    iterations = 2000000
-    entries_per_memory_location = 16
+    iterations = 40000
+    entries_per_memory_location = 64
     num_read_heads = 4
-    number_of_memory_locations = 64
+    batch_size = 50
+    number_of_memory_locations = 256
     my_gen = disk_data("/media/dylan/DATA/mnist/mnist_train_images",
                        "/media/dylan/DATA/mnist/mnist_train_labels")
     graph = tf.Graph()
@@ -145,13 +149,14 @@ def main(argv=None):
                 seq_len=seq_len,
                 mem_len=number_of_memory_locations,
                 bit_len=entries_per_memory_location,
-                batch_size=3,
+                batch_size=batch_size,
                 num_heads=num_read_heads)
             dnc.install_controller(
                 ConvModel(
                     dnc.nn_input_size,
                     dnc.nn_output_size,
-                    entries_per_memory_location*num_read_heads))
+                    entries_per_memory_location*num_read_heads,
+                    batch_size))
             output = dnc()
             with tf.name_scope("Eval"):
                 loss = tf.reduce_mean(
@@ -180,12 +185,14 @@ def main(argv=None):
 
             for epoch in range(0, iterations+1):
                 try:
-                    final_o_data, final_i_data = gen_sequence(my_gen, seq_len, 3)
+                    final_o_data, final_i_data = gen_sequence(
+                        my_gen, seq_len, batch_size)
                 except:
                     my_gen = disk_data(
                         "/media/dylan/DATA/mnist/mnist_train_images",
                         "/media/dylan/DATA/mnist/mnist_train_labels")
-                    final_o_data, final_i_data = gen_sequence(my_gen, seq_len, 3)
+                    final_o_data, final_i_data = gen_sequence(
+                        my_gen, seq_len, batch_size)
                 feed_dict = {dnc.i_data: final_i_data,
                              dnc.o_data: final_o_data}
                 current_loss, predictions, _ = sess.run(
