@@ -156,7 +156,7 @@
             
   <div class="section" id="module-CopyTask">
 <span id="copytask-module"></span><h1>CopyTask module<a class="headerlink" href="#module-CopyTask" title="Permalink to this headline">¶</a></h1>
-<p>dncdbg.py.</p>
+<p>Basic sequence copy task for DNC.</p>
 <dl class="class">
 <dt id="CopyTask.MLPModel">
 <em class="property">class </em><code class="descclassname">CopyTask.</code><code class="descname">MLPModel</code><span class="sig-paren">(</span><em>input_size</em>, <em>hidden_size</em>, <em>output_size</em><span class="sig-paren">)</span><a class="headerlink" href="#CopyTask.MLPModel" title="Permalink to this definition">¶</a></dt>
@@ -165,15 +165,30 @@
 
 <dl class="function">
 <dt id="CopyTask.data">
-<code class="descclassname">CopyTask.</code><code class="descname">data</code><span class="sig-paren">(</span><em>seq_len</em>, <em>seq_width</em><span class="sig-paren">)</span><a class="headerlink" href="#CopyTask.data" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">CopyTask.</code><code class="descname">data</code><span class="sig-paren">(</span><em>seq_len</em>, <em>seq_width</em>, <em>batch_size</em><span class="sig-paren">)</span><a class="headerlink" href="#CopyTask.data" title="Permalink to this definition">¶</a></dt>
 <dd><p>Generate inputs for DNC sequence copy task.</p>
 </dd></dl>
 
 <dl class="function">
+<dt id="CopyTask.evaluate">
+<code class="descclassname">CopyTask.</code><code class="descname">evaluate</code><span class="sig-paren">(</span><em>seq_len=None</em>, <em>seq_width=None</em>, <em>labels=None</em>, <em>logits=None</em><span class="sig-paren">)</span><a class="headerlink" href="#CopyTask.evaluate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
 <dt id="CopyTask.main">
 <code class="descclassname">CopyTask.</code><code class="descname">main</code><span class="sig-paren">(</span><em>argv=None</em><span class="sig-paren">)</span><a class="headerlink" href="#CopyTask.main" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="CopyTask.run_training">
+<code class="descclassname">CopyTask.</code><code class="descname">run_training</code><span class="sig-paren">(</span><em>seq_len=6</em>, <em>seq_width=4</em>, <em>iterations=50000</em>, <em>mem_len=15</em>, <em>bit_len=10</em>, <em>num_read_heads=1</em>, <em>batch_size=1</em>, <em>softmax_alloc=False</em>, <em>tb_dir='tb/dnc'</em><span class="sig-paren">)</span><a class="headerlink" href="#CopyTask.run_training" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run training loop.</p>
 </dd></dl>
+
+<dl class="function">
+<dt id="CopyTask.update">
+<code class="descclassname">CopyTask.</code><code class="descname">update</code><span class="sig-paren">(</span><em>loss</em>, <em>learning_rate=0.0001</em>, <em>momentum=0.9</em>, <em>clip_low=-10</em>, <em>clip_high=10</em><span class="sig-paren">)</span><a class="headerlink" href="#CopyTask.update" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 </div>
 

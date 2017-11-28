@@ -164,7 +164,7 @@ black images begin, the DNC should emit a one-hot vector repeating the
 class of the real images.</p>
 <dl class="class">
 <dt id="MNISTCopyTask.ConvModel">
-<em class="property">class </em><code class="descclassname">MNISTCopyTask.</code><code class="descname">ConvModel</code><span class="sig-paren">(</span><em>input_size</em>, <em>output_size</em>, <em>read_vec_size</em><span class="sig-paren">)</span><a class="headerlink" href="#MNISTCopyTask.ConvModel" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">MNISTCopyTask.</code><code class="descname">ConvModel</code><span class="sig-paren">(</span><em>input_size</em>, <em>output_size</em>, <em>read_vec_size</em>, <em>batch_size</em><span class="sig-paren">)</span><a class="headerlink" href="#MNISTCopyTask.ConvModel" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
 <p>A simple convolutional neural network to be used as a controller.</p>
 </dd></dl>
@@ -176,6 +176,11 @@ class of the real images.</p>
 </dd></dl>
 
 <dl class="function">
+<dt id="MNISTCopyTask.evaluate">
+<code class="descclassname">MNISTCopyTask.</code><code class="descname">evaluate</code><span class="sig-paren">(</span><em>seq_len=None</em>, <em>seq_width=None</em>, <em>labels=None</em>, <em>logits=None</em><span class="sig-paren">)</span><a class="headerlink" href="#MNISTCopyTask.evaluate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
 <dt id="MNISTCopyTask.gen_sequence">
 <code class="descclassname">MNISTCopyTask.</code><code class="descname">gen_sequence</code><span class="sig-paren">(</span><em>label_img_gen</em>, <em>seq_len</em>, <em>batch_size</em><span class="sig-paren">)</span><a class="headerlink" href="#MNISTCopyTask.gen_sequence" title="Permalink to this definition">¶</a></dt>
 <dd><p>Generate the input and output sequences.</p>
@@ -184,8 +189,23 @@ class of the real images.</p>
 <dl class="function">
 <dt id="MNISTCopyTask.main">
 <code class="descclassname">MNISTCopyTask.</code><code class="descname">main</code><span class="sig-paren">(</span><em>argv=None</em><span class="sig-paren">)</span><a class="headerlink" href="#MNISTCopyTask.main" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="MNISTCopyTask.mnist_input">
+<code class="descclassname">MNISTCopyTask.</code><code class="descname">mnist_input</code><span class="sig-paren">(</span><em>mnist_generator</em>, <em>seq_len</em>, <em>batch_size</em>, <em>img_path</em>, <em>lbl_path</em><span class="sig-paren">)</span><a class="headerlink" href="#MNISTCopyTask.mnist_input" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="MNISTCopyTask.run_training">
+<code class="descclassname">MNISTCopyTask.</code><code class="descname">run_training</code><span class="sig-paren">(</span><em>seq_len=3</em>, <em>seq_width=10</em>, <em>iterations=25000</em>, <em>mem_len=12</em>, <em>bit_len=1024</em>, <em>num_read_heads=4</em>, <em>batch_size=50</em>, <em>softmax_alloc=True</em>, <em>img_path='/media/dylan/DATA/mnist/mnist_train_images'</em>, <em>lbl_path='/media/dylan/DATA/mnist/mnist_train_labels'</em>, <em>tb_dir='tb/dnc'</em><span class="sig-paren">)</span><a class="headerlink" href="#MNISTCopyTask.run_training" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run training loop.</p>
 </dd></dl>
+
+<dl class="function">
+<dt id="MNISTCopyTask.update">
+<code class="descclassname">MNISTCopyTask.</code><code class="descname">update</code><span class="sig-paren">(</span><em>loss</em>, <em>learning_rate=0.0001</em>, <em>momentum=0.9</em>, <em>clip_low=-10</em>, <em>clip_high=10</em><span class="sig-paren">)</span><a class="headerlink" href="#MNISTCopyTask.update" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 </div>
 

@@ -81,7 +81,7 @@ class ConvModel:
                 shape=[self.output_size],
                 initializer=tf.zeros_initializer())
             fc1_out = tf.matmul(fc1_input, W) + b
-            fc1_act = tf.nn.tanh(fc1_out)
+            fc1_act = tf.nn.relu(fc1_out)
             self.W = W
             self.b = b
             output = fc1_act
@@ -124,20 +124,55 @@ def gen_sequence(label_img_gen, seq_len, batch_size):
         inputs = np.reshape(inputs, [seq_len*2, 28*28])
         target_batch.append(targets)
         input_batch.append(inputs)
-    return target_batch, input_batch 
+    return target_batch, input_batch
 
 
-def main(argv=None):
+def mnist_input(mnist_generator, seq_len, batch_size, img_path, lbl_path):
+    try:
+        final_o_data, final_i_data = gen_sequence(
+                mnist_generator, seq_len, batch_size)
+    except:
+        my_gen = disk_data(img_path, lbl_path)
+        final_o_data, final_i_data = gen_sequence(my_gen, seq_len, batch_size)
+    return final_o_data, final_i_data
+
+
+def evaluate(seq_len=None, seq_width=None, labels=None, logits=None):
+    with tf.name_scope("Eval"):
+        mask = tf.concat(
+            [tf.zeros([seq_len, seq_width]), tf.ones([seq_len, seq_width])],
+            axis=0, name="mask")
+        xent = tf.nn.sigmoid_cross_entropy_with_logits(
+            labels=labels, logits=logits)
+        masked_xent = mask * xent
+        loss = tf.reduce_mean(masked_xent)
+    return loss
+
+
+def update(loss, learning_rate=1e-4, momentum=0.9, clip_low=-10, clip_high=10):
+    with tf.name_scope("Train"):
+        optimizer = tf.train.RMSPropOptimizer(learning_rate, momentum=momentum)
+        grads = optimizer.compute_gradients(loss)
+        for i, (grad, var) in enumerate(grads):
+            if grad is not None:
+                grads[i] = (tf.clip_by_value(grad, clip_low, clip_high), var)
+        update_op = optimizer.apply_gradients(grads)
+    return update_op
+
+
+def run_training(seq_len=3,
+                 seq_width=10,
+                 iterations=25000,
+                 mem_len=12,
+                 bit_len=1024,
+                 num_read_heads=4,
+                 batch_size=50,
+                 softmax_alloc=True,
+                 img_path="/media/dylan/DATA/mnist/mnist_train_images",
+                 lbl_path="/media/dylan/DATA/mnist/mnist_train_labels",
+                 tb_dir="tb/dnc"):
     """Run training loop."""
-    seq_len = 5
-    seq_width = 10  # seems to be bit_len
-    iterations = 40000
-    entries_per_memory_location = 64
-    num_read_heads = 4
-    batch_size = 50
-    number_of_memory_locations = 256
-    my_gen = disk_data("/media/dylan/DATA/mnist/mnist_train_images",
-                       "/media/dylan/DATA/mnist/mnist_train_labels")
+    my_gen = disk_data(img_path, lbl_path)
     graph = tf.Graph()
 
     with graph.as_default():
@@ -147,65 +182,44 @@ def main(argv=None):
                 input_size=28*28,
                 output_size=seq_width,
                 seq_len=seq_len,
-                mem_len=number_of_memory_locations,
-                bit_len=entries_per_memory_location,
+                mem_len=mem_len,
+                bit_len=bit_len,
                 batch_size=batch_size,
-                num_heads=num_read_heads)
+                num_heads=num_read_heads,
+                softmax_allocation=softmax_alloc)
             dnc.install_controller(
                 ConvModel(
                     dnc.nn_input_size,
                     dnc.nn_output_size,
-                    entries_per_memory_location*num_read_heads,
+                    bit_len*num_read_heads,
                     batch_size))
             output = dnc()
-            with tf.name_scope("Eval"):
-                loss = tf.reduce_mean(
-                    tf.nn.softmax_cross_entropy_with_logits(
-                        labels=dnc.o_data,
-                        logits=output))
-                with tf.name_scope("Regularizers"):
-                    regularizers = (tf.nn.l2_loss(dnc.controller.K1) +
-                                    tf.nn.l2_loss(dnc.controller.K2) +
-                                    tf.nn.l2_loss(dnc.controller.b1) +
-                                    tf.nn.l2_loss(dnc.controller.b2) +
-                                    tf.nn.l2_loss(dnc.controller.W) +
-                                    tf.nn.l2_loss(dnc.controller.b))
-                loss += 5e-4 * regularizers
-            with tf.name_scope("Train"):
-                optimizer = tf.train.AdamOptimizer(
-                    learning_rate=0.0001)
-                gradients = optimizer.compute_gradients(loss)
-                # for i, (grad, var) in enumerate(gradients):
-                #     if grad is not None:
-                #         gradients[i] = (tf.clip_by_value(grad, -10, 10), var)
-                apply_gradients = optimizer.apply_gradients(gradients)
+            loss = evaluate(seq_len=seq_len, seq_width=seq_width,
+                            labels=dnc.o_data, logits=output)
+            apply_gradients = update(loss)
             sess.run(tf.global_variables_initializer())
             train_writer = tf.summary.FileWriter(
-                "tb/dnc", graph=tf.get_default_graph())
+                tb_dir, graph=tf.get_default_graph())
 
-            for epoch in range(0, iterations+1):
-                try:
-                    final_o_data, final_i_data = gen_sequence(
-                        my_gen, seq_len, batch_size)
-                except:
-                    my_gen = disk_data(
-                        "/media/dylan/DATA/mnist/mnist_train_images",
-                        "/media/dylan/DATA/mnist/mnist_train_labels")
-                    final_o_data, final_i_data = gen_sequence(
-                        my_gen, seq_len, batch_size)
-                feed_dict = {dnc.i_data: final_i_data,
-                             dnc.o_data: final_o_data}
+            for epoch in range(iterations+1):
+                o_data, i_data = mnist_input(my_gen, seq_len, batch_size,
+                                             img_path, lbl_path)
+                feed_dict = {dnc.i_data: i_data, dnc.o_data: o_data}
                 current_loss, predictions, _ = sess.run(
                     [loss, output, apply_gradients],
                     feed_dict=feed_dict)
                 if epoch % 100 == 0:
                     print("Epoch {}: Loss {}".format(epoch, current_loss))
             print("Final inputs:")
-            print(final_i_data)
+            print(i_data)
             print("Final targets:")
-            print(final_o_data)
+            print(o_data)
             print("Final predictions:")
             print(predictions)
+
+
+def main(argv=None):
+    run_training()
 
 
 if __name__ == '__main__':

@@ -262,7 +262,7 @@ class DNC:
               read_keys       k^r_t[i]   B x R x W
               read_strengths  B^r_t[i]   B x 1 x R   [0, inf)
               write_key       k^w_t      B x 1 x W
-              write_strength  B^w_t      B x 1       [0, inf)
+              write_strength  B^w_t      B x 1 x 1   [0, inf)
               erase_vec       e_t        B x W       [0 1]
               write_vec       v_t        B x W
               free_gates      f_t[i]     B x 1 x R   [0 1]
@@ -320,8 +320,10 @@ class DNC:
                     interface_vec[:, start_idxs[2]:start_idxs[3]],
                     1)
             with tf.variable_scope("write_strength"):
-                int_parts["write_strength"] = 1 + tf.nn.softplus(
-                    interface_vec[:, start_idxs[3]:start_idxs[4]])
+                int_parts["write_strength"] = tf.expand_dims(
+                    1 + tf.nn.softplus(
+                        interface_vec[:, start_idxs[3]:start_idxs[4]]),
+                    1)
             with tf.variable_scope("erase_vec"):
                 int_parts["erase_vec"] = tf.nn.sigmoid(
                     interface_vec[:, start_idxs[4]:start_idxs[5]])
@@ -367,15 +369,24 @@ class DNC:
             D(u, v) &= \frac{u \cdot v}{\lVert u \rVert \lVert v \rVert},\\
             C(M, k, \beta)[i] &= \frac{exp(D(k,M[i,\cdot]) \beta)} {\sum_j(exp(D(k,M[j,\cdot]) \beta))}
 
+        Args:
+            memory: The ``batch_size x mem_len x bit_len`` memory matrix.
+            key: The ``batch_size x num_keys x bit_len`` key vector.
+            strength: The ``batch_size x 1 x num_keys`` strength vector.
+
+        Returns:
+            The cosine similarity between the key and the memory of shape
+            ``batch_size x mem_len x num_keys``.
+
         """
         with tf.variable_scope("CosineSimilarity"):
             norm_mem = tf.nn.l2_normalize(
                 memory, 2, name="norm_mem")
-            norm_key = tf.nn.l2_normalize(key, 1, name="norm_key")
+            norm_key = tf.nn.l2_normalize(key, 2, name="norm_key")
             with tf.variable_scope("similarity"):
-                similarity_z = tf.squeeze(
-                    tf.matmul(
-                        norm_mem, norm_key, transpose_b=True, name="lookup"))
+                similarity_z = tf.matmul(
+                        norm_mem, norm_key, transpose_b=True, name="lookup")
+
         with tf.variable_scope("scaling"):
             similarity_scaled = tf.multiply(
                 similarity_z, strength, name="str_scale")
@@ -411,7 +422,8 @@ class DNC:
                 of shape ``batch_size x mem_len``.
             read_weights: A corner-vector (weaker all-positive unit vector)
                 of shape ``batch_size x mem_len x 1`` for each head,
-                making an effective shape of ``mem_len x num_heads``.
+                making an effective shape of 
+                ``batch_size x mem_len x num_heads``.
             free_gates: A vector of shape ``batch_size x 1 x num_heads``
                 with each element in ``[0, 1]``.
         Returns:
@@ -543,7 +555,7 @@ class DNC:
         Args:
             alloc_weights: The tensor of size ``batch_size x mem_len``.
             write_content_lookup: A unit vector of size
-                ``batch_size x mem_len``.
+                ``batch_size x mem_len x 1``.
             write_gate: A scalar in ``[0, 1]`` for each batch entry having
                 shape ``batch_size x 1``.
             alloc_gate: A scalar in ``[0, 1]`` for each batch entry having
@@ -562,7 +574,7 @@ class DNC:
             1., alloc_gate, name="g_unalloc")
         lookup_alloc = tf.multiply(
             unalloc_gate,
-            write_content_lookup,
+            tf.squeeze(write_content_lookup, axis=-1),
             name="unalloc_g_by_cw")
         write_locations = tf.add(
             scaled_alloc, lookup_alloc, name="write_locations")
@@ -905,6 +917,6 @@ class DNC:
             with tf.variable_scope("prediction/"):
                 concat_output = tf.stack(
                     seq_prediction, axis=1, name="collect_out")
-                squeeze_output = tf.squeeze(concat_output)
-        return squeeze_output
+                # squeeze_output = tf.squeeze(concat_output, axis=-1)
+        return concat_output
 
