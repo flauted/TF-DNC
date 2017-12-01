@@ -4,7 +4,7 @@ import numpy as np
 import tensorflow as tf
 import os
 from tensorflow.python import debug as tf_debug
-from DNCv2 import DNC
+from DNCv3 import DNC
 
 
 class MLPModel:
@@ -98,7 +98,7 @@ def run_training(seq_len=6,
 
     with graph.as_default():
         with tf.Session() as sess:
-            # sess = tf_debug.LocalCLIDebugWrapperSession(sess)
+            sess = tf_debug.LocalCLIDebugWrapperSession(sess)
             dnc = DNC(
                 input_size=seq_width,
                 output_size=seq_width,
@@ -110,17 +110,24 @@ def run_training(seq_len=6,
                 softmax_allocation=softmax_alloc)
             dnc.install_controller(
                 MLPModel(dnc.nn_input_size, 128, dnc.nn_output_size))
-            output = dnc()
+            i_data = tf.placeholder(tf.float32, [batch_size, seq_len*2, seq_width])
+            o_data = tf.placeholder(tf.float32, [batch_size, seq_len*2, seq_width])
+            output, new_state = tf.nn.dynamic_rnn(dnc,
+                                              i_data,
+                                              initial_state=dnc.zero_state(),
+                                              scope="DNC",
+                                              parallel_iterations=1)
+
             loss = evaluate(seq_len=seq_len, seq_width=seq_width,
-                            labels=dnc.o_data, logits=output)
+                            labels=o_data, logits=output)
             apply_gradients = update(loss)
             sess.run(tf.global_variables_initializer())
             train_writer = tf.summary.FileWriter(
                 "tb/dnc", graph=tf.get_default_graph())
 
             for epoch in range(0, iterations+1):
-                i_data, o_data = data(seq_len, seq_width, batch_size)
-                feed_dict = {dnc.i_data: i_data, dnc.o_data: o_data}
+                curr_i_data, curr_o_data = data(seq_len, seq_width, batch_size)
+                feed_dict = {i_data: curr_i_data, o_data: curr_o_data}
                 predictions, current_loss, _ = sess.run(
                     [output, loss, apply_gradients],
                     feed_dict=feed_dict)
