@@ -12,7 +12,7 @@ import numpy as np
 import tensorflow as tf
 import struct
 from tensorflow.python import debug as tf_debug
-from DNCv2 import DNC
+from DNCv3 import DNC
 
 
 class ConvModel:
@@ -168,6 +168,7 @@ def run_training(seq_len=3,
                  num_read_heads=4,
                  batch_size=50,
                  softmax_alloc=True,
+                 stateful=True,
                  img_path="/media/dylan/DATA/mnist/mnist_train_images",
                  lbl_path="/media/dylan/DATA/mnist/mnist_train_labels",
                  tb_dir="tb/dnc"):
@@ -178,6 +179,9 @@ def run_training(seq_len=3,
     with graph.as_default():
         with tf.Session() as sess:
             # sess = tf_debug.LocalCLIDebugWrapperSession(sess)
+            i_data = tf.placeholder(tf.float32, [batch_size, seq_len*2, 28*28])
+            o_data = tf.placeholder(tf.float32, [batch_size, seq_len*2, seq_width])
+
             dnc = DNC(
                 input_size=28*28,
                 output_size=seq_width,
@@ -193,29 +197,44 @@ def run_training(seq_len=3,
                     dnc.nn_output_size,
                     bit_len*num_read_heads,
                     batch_size))
-            output = dnc()
+            initial_state = dnc.zero_state()
+            output, new_state = tf.nn.dynamic_rnn(
+                dnc,
+                i_data,
+                initial_state=initial_state,
+                scope="DNC",
+                parallel_iterations=1 if stateful else None)
+
+            if stateful:
+                update_ops = []
+                for init_var, new_var in zip(initial_state, new_state):
+                    update_ops.extend([init_var.assign(new_var)])
+
             loss = evaluate(seq_len=seq_len, seq_width=seq_width,
-                            labels=dnc.o_data, logits=output)
+                            labels=o_data, logits=output)
             apply_gradients = update(loss)
             sess.run(tf.global_variables_initializer())
             train_writer = tf.summary.FileWriter(
                 tb_dir, graph=tf.get_default_graph())
 
             for epoch in range(iterations+1):
-                o_data, i_data = mnist_input(my_gen, seq_len, batch_size,
-                                             img_path, lbl_path)
-                feed_dict = {dnc.i_data: i_data, dnc.o_data: o_data}
-                current_loss, predictions, _ = sess.run(
-                    [loss, output, apply_gradients],
+                curr_o_data, curr_i_data = mnist_input(
+                    my_gen, seq_len, batch_size, img_path, lbl_path)
+                feed_dict = {i_data: curr_i_data, o_data: curr_o_data}
+                current_loss, predictions, _, _ = sess.run(
+                    [loss, output, apply_gradients,
+                     update_ops if stateful else tf.no_op()],
                     feed_dict=feed_dict)
+
                 if epoch % 100 == 0:
                     print("Epoch {}: Loss {}".format(epoch, current_loss))
-            print("Final inputs:")
-            print(i_data)
-            print("Final targets:")
-            print(o_data)
-            print("Final predictions:")
-            print(predictions)
+
+    print("Final inputs:")
+    print(curr_i_data)
+    print("Final targets:")
+    print(curr_o_data)
+    print("Final predictions:")
+    print(predictions)
 
 
 def main(argv=None):

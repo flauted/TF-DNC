@@ -5,5 +5,6 @@ dnc
    :maxdepth: 4
 
    CopyTask
-   DNCv2
+   memory
+   DNCv3
    MNISTCopyTask

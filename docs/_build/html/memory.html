@@ -1,0 +1,767 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>memory module &mdash; DNC .1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="DNC .1 documentation" href="index.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> DNC
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">memory module</a></li>
+</ul>
+</div>
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">DNC</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>memory module</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/memory.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="module-memory">
+<span id="memory-module"></span><h1>memory module<a class="headerlink" href="#module-memory" title="Permalink to this headline">¶</a></h1>
+<p>Create a memory module for the DNC.</p>
+<dl class="class">
+<dt id="memory.AccessState">
+<em class="property">class </em><code class="descclassname">memory.</code><code class="descname">AccessState</code><span class="sig-paren">(</span><em>mem</em>, <em>usage</em>, <em>link</em>, <em>precedence</em>, <em>read_weights</em>, <em>write_weights</em>, <em>read_vecs</em><span class="sig-paren">)</span><a class="headerlink" href="#memory.AccessState" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">tuple</span></code></p>
+<dl class="attribute">
+<dt id="memory.AccessState.link">
+<code class="descname">link</code><a class="headerlink" href="#memory.AccessState.link" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="memory.AccessState.mem">
+<code class="descname">mem</code><a class="headerlink" href="#memory.AccessState.mem" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="memory.AccessState.precedence">
+<code class="descname">precedence</code><a class="headerlink" href="#memory.AccessState.precedence" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 3</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="memory.AccessState.read_vecs">
+<code class="descname">read_vecs</code><a class="headerlink" href="#memory.AccessState.read_vecs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 6</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="memory.AccessState.read_weights">
+<code class="descname">read_weights</code><a class="headerlink" href="#memory.AccessState.read_weights" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 4</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="memory.AccessState.usage">
+<code class="descname">usage</code><a class="headerlink" href="#memory.AccessState.usage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="memory.AccessState.write_weights">
+<code class="descname">write_weights</code><a class="headerlink" href="#memory.AccessState.write_weights" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 5</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="memory.Memory">
+<em class="property">class </em><code class="descclassname">memory.</code><code class="descname">Memory</code><span class="sig-paren">(</span><em>mem_len</em>, <em>bit_len</em>, <em>num_heads</em>, <em>batch_size</em>, <em>softmax_allocation</em><span class="sig-paren">)</span><a class="headerlink" href="#memory.Memory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>Implement the memory module of the differentiable neural computer.</p>
+<p>The interaction is as follows</p>
+<ul>
+<li><p class="first">Split up controller interface vector.</p>
+</li>
+<li><p class="first">Make write weights</p>
+<blockquote>
+<div><ul class="simple">
+<li>Free gates determine “whether the most recently read locations
+can be freed.”</li>
+<li>Retention vector <span class="math">\(\psi\)</span> “represents by how much each
+location will NOT be freed by the free gates.” Each entry is
+in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1]</span></code>.</li>
+<li>Usage: A location has high usage if it has been retained by
+the free gates (<span class="math">\(\psi\)</span> near 1), AND usage of the location
+at the last timestep was high or the location was just written
+to (previous write weights near 1).</li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<p>A nice proof that usage stays in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1]</span></code> is provided in section 6.3
+of “Implementation and Optimization of Differentiable Neural Computers”
+by C. Hsin.</p>
+<blockquote>
+<div><ul class="simple">
+<li>Allocation: A sharpened, inverted usage whose elements are in
+<code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1]</span></code> and  sum to at most 1. <code class="docutils literal"><span class="pre">Allocate</span></code>, or write to
+locations with a low usage.</li>
+<li>Write weights: The controller gate determines whether to write
+to a new location (alloc gate), a location with high content
+similarity (1 - alloc gate), or not write at all (write gate).
+Each entry is in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1]</span></code> and the vector sums to at most
+1.</li>
+</ul>
+</div></blockquote>
+<p>Thinking of the weight weights as a probability distribution,
+the remainder of <code class="docutils literal"><span class="pre">1</span> <span class="pre">-</span> <span class="pre">sum(weights)</span></code> is the probability of
+accessing no memory location at all (called null operations).</p>
+<ul>
+<li><p class="first">Write memory. Alter memory location <code class="docutils literal"><span class="pre">[i,</span> <span class="pre">j]</span></code> as follows</p>
+<blockquote>
+<div><ul class="simple">
+<li>Scale down by 1 minus the ith entry of write weights times
+jth entry of erase vector, a factor in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1]</span></code>.</li>
+<li>Add ith entry of write weights times jth entry of write vector.</li>
+<li>In this sense, the write weights determine a scale for each
+row, while the write and erase vectors carry information for
+all the columns.</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first">Make read weights</p>
+<blockquote>
+<div><ul class="simple">
+<li>The temporal link matrix retains the writing order. An entry
+<code class="docutils literal"><span class="pre">[i,</span> <span class="pre">j]</span></code> encodes “the degree to which location <cite>i</cite> … is
+written to after location <cite>j</cite>.” Each row and column of L defines
+a probability distribution over the locations, with nulls.</li>
+<li>Precedence: Each element represents how close that location
+was to the most recent writing. If precedence is high,
+the memory location has changed a lot recently.</li>
+<li>The following happens for each read head</li>
+<li>Forward/Backward weighting: Redistribute the previous read
+weighting based on the TLM. The backward weighting is determined
+by transposing the TLM, effectively reversing the ordering.</li>
+<li>Read weights: The read modes is a probability distribution
+(elements in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1]</span></code> summing to 1 exactly) that controls how
+the read weights function. If element 1 is high, the reading
+happens in the reverse order of writing (backward weighting
+dominates). If element 2 is high, the reading happens on
+locations where there is a high degree of similarity between
+the location and the read key. If element 3 is high, the reading
+happens in the order of the TLM.</li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<p>By “order,” obviously we do not mean literal iteration; the action
+does not occur in sequence. It means that e.g. if element 1 of the
+read modes is high, the information in the oldest memory location is
+factored in highest in the head’s read vector.)</p>
+<ul class="simple">
+<li>Read memory. Multiply the memory by the read weights for each head
+to give the read (past tense) vectors.</li>
+</ul>
+<dl class="staticmethod">
+<dt id="memory.Memory.content_lookup">
+<em class="property">static </em><code class="descname">content_lookup</code><span class="sig-paren">(</span><em>memory</em>, <em>key</em>, <em>strength</em><span class="sig-paren">)</span><a class="headerlink" href="#memory.Memory.content_lookup" title="Permalink to this definition">¶</a></dt>
+<dd><p>Lookup from memory.</p>
+<p>A key vector - emitted by controller - is compared
+to content of each location in memory according to
+a similarity measurement. The sim scores determine a
+weighting that can be used by the read heads for
+recall or by the write heads to modify memory.</p>
+<p>Corresponds to</p>
+<div class="math">
+\[\begin{split}D(u, v) &amp;= \frac{u \cdot v}{\lVert u \rVert \lVert v \rVert},\\
+C(M, k, \beta)[i] &amp;= \frac{exp(D(k,M[i,\cdot]) \beta)} {\sum_j(exp(D(k,M[j,\cdot]) \beta))}\end{split}\]</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>memory</strong> – The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">bit_len</span></code> memory matrix.</li>
+<li><strong>key</strong> – The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">bit_len</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> key vector.</li>
+<li><strong>strength</strong> – The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">1</span> <span class="pre">x</span> <span class="pre">num_keys</span></code> strength vector.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The cosine similarity between the key and the memory of shape
+<code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">num_keys</span></code>.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="memory.Memory.erase_and_write_memory">
+<em class="property">static </em><code class="descname">erase_and_write_memory</code><span class="sig-paren">(</span><em>old_mem</em>, <em>write_weights</em>, <em>erase_vec</em>, <em>write_vec</em><span class="sig-paren">)</span><a class="headerlink" href="#memory.Memory.erase_and_write_memory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Erase and write the memory matrix.</p>
+<p>Comparing to the paper, we have</p>
+<div class="math">
+\[M_t = M_{t-1} \odot ( [[1]] - w^w_t (e_t)^T) + w^w_t (v_t)^T\]</div>
+<p>where <span class="math">\(w^w_t\)</span> is the computed write vector, <span class="math">\(e_t\)</span> is the
+emitted erase vector, and <span class="math">\(v_t\)</span> is the emitted write vector.
+Also, <span class="math">\([[1]]\)</span> denotes a matrix of ones.</p>
+<p>As for implementation, we sidestep the transposition by expanding
+<span class="math">\(e_t, v_t\)</span> to <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">1</span> <span class="pre">x</span> <span class="pre">bit_len</span></code> and expanding
+<span class="math">\(w^w_t\)</span> as <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">1</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>old_memory</strong> – A matrix of size <code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">bit_len</span></code>.</li>
+<li><strong>write_weights</strong> – The computed write weighting corner-vector of size
+<code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">1</span></code>.</li>
+<li><strong>erase_vec</strong> – The emitted erase vector of size
+<code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">1</span> <span class="pre">x</span> <span class="pre">bit_len</span></code>.</li>
+<li><strong>write_vec</strong> – The emitted write vector of size
+<code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">1</span> <span class="pre">x</span> <span class="pre">bit_len</span></code>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The updated memory matrix.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="memory.Memory.interface_partition">
+<code class="descname">interface_partition</code><span class="sig-paren">(</span><em>interface_vec</em>, <em>return_alloc_strength=None</em><span class="sig-paren">)</span><a class="headerlink" href="#memory.Memory.interface_partition" title="Permalink to this definition">¶</a></dt>
+<dd><p>Partition the interface vector into the memory controls.</p>
+<p>We use a strided slicing approach. This allows for eventual
+extensibility to batches, as well as nice graph visualization.
+After partitioning, the controls are possibly reshaped and ran
+through activation functions to preserve their domain.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>                 <span class="n">VARIABLE</span> <span class="n">REFERENCE</span>
+ <span class="n">Key</span>             <span class="n">Math</span>       <span class="n">Shape</span><span class="o">*</span>      <span class="n">Domain</span>
+<span class="o">------------------------------------------------------</span>
+ <span class="n">read_keys</span><span class="o">**</span>     <span class="n">k</span><span class="o">^</span><span class="n">r_t</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>   <span class="n">B</span> <span class="n">x</span> <span class="n">R</span> <span class="n">x</span> <span class="n">W</span>   <span class="n">R</span>
+ <span class="n">read_strengths</span>  <span class="n">B</span><span class="o">^</span><span class="n">r_t</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>   <span class="n">B</span> <span class="n">x</span> <span class="mi">1</span> <span class="n">x</span> <span class="n">R</span>   <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">inf</span><span class="p">)</span>
+ <span class="n">write_key</span><span class="o">**</span>     <span class="n">k</span><span class="o">^</span><span class="n">w_t</span>      <span class="n">B</span> <span class="n">x</span> <span class="mi">1</span> <span class="n">x</span> <span class="n">W</span>   <span class="n">R</span>
+ <span class="n">write_strength</span>  <span class="n">B</span><span class="o">^</span><span class="n">w_t</span>      <span class="n">B</span> <span class="n">x</span> <span class="mi">1</span> <span class="n">x</span> <span class="mi">1</span>   <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">inf</span><span class="p">)</span>
+ <span class="n">erase_vec</span>       <span class="n">e_t</span>        <span class="n">B</span> <span class="n">x</span> <span class="mi">1</span> <span class="n">x</span> <span class="n">W</span>   <span class="p">[</span><span class="mi">0</span> <span class="mi">1</span><span class="p">]</span>
+ <span class="n">write_vec</span>       <span class="n">v_t</span>        <span class="n">B</span> <span class="n">x</span> <span class="mi">1</span> <span class="n">x</span> <span class="n">W</span>   <span class="n">R</span>
+ <span class="n">free_gates</span>      <span class="n">f_t</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>     <span class="n">B</span> <span class="n">x</span> <span class="mi">1</span> <span class="n">x</span> <span class="n">R</span>   <span class="p">[</span><span class="mi">0</span> <span class="mi">1</span><span class="p">]</span>
+ <span class="n">alloc_gate</span>      <span class="n">g</span><span class="o">^</span><span class="n">a_t</span>      <span class="n">B</span> <span class="n">x</span> <span class="mi">1</span>       <span class="p">[</span><span class="mi">0</span> <span class="mi">1</span><span class="p">]</span>
+<span class="p">[</span><span class="n">alloc_strength</span><span class="o">+</span> <span class="n">B</span><span class="o">^</span><span class="n">a_t</span>      <span class="n">B</span> <span class="n">x</span> <span class="mi">1</span>       <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">inf</span><span class="p">)</span> <span class="p">]</span>
+ <span class="n">write_gate</span>      <span class="n">g</span><span class="o">^</span><span class="n">w_t</span>      <span class="n">B</span> <span class="n">x</span> <span class="mi">1</span>       <span class="p">[</span><span class="mi">0</span> <span class="mi">1</span><span class="p">]</span>
+ <span class="n">read_modes</span>      <span class="n">pi_t</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>    <span class="n">B</span> <span class="n">x</span> <span class="mi">3</span> <span class="n">x</span> <span class="n">R</span>   <span class="n">SOFTMAX</span> <span class="n">SIMPLEX</span>
+</pre></div>
+</div>
+<p><a href="#id1"><span class="problematic" id="id2">*</span></a>B stands for <code class="docutils literal"><span class="pre">batch_size</span></code>, R for <code class="docutils literal"><span class="pre">num_heads</span></code>, and W
+for <code class="docutils literal"><span class="pre">bit_len</span></code> (consistent with paper). Index <code class="docutils literal"><span class="pre">[i]</span></code> corresponds to
+dimension with size R.</p>
+<p>+Only emitted when <code class="docutils literal"><span class="pre">softmax_allocation</span></code> is true.</p>
+<p><a href="#id3"><span class="problematic" id="id4">**</span></a>In the paper, keys are shaped W x _.</p>
+<p>The variable reference table is provided to clarify the
+slicing operations. The reference helps with the obscure
+implementation, and so too does the TensorBoard graph.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>interface_vec</strong> (<code class="docutils literal"><span class="pre">[batch_size,</span> <span class="pre">interface_size]</span></code>) – The memory
+interface values.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A dictionary with key-value pairs as described in
+the chart. Notice “Key” in the chart corresponds to
+keys for the return dict.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="memory.Memory.read_memory">
+<em class="property">static </em><code class="descname">read_memory</code><span class="sig-paren">(</span><em>memory</em>, <em>read_weights</em><span class="sig-paren">)</span><a class="headerlink" href="#memory.Memory.read_memory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read off memory.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>memory_matrix</strong> – The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">bit_len</span></code> memory
+matrix.</li>
+<li><strong>read_weights</strong> – A tensor of corner-vectors for each read head,
+with shape <code class="docutils literal"><span class="pre">num_heads</span> <span class="pre">x</span> <span class="pre">mem_len</span></code>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The read (past tense) real-valued vectors for each read head; a
+tensor of shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">num_heads</span> <span class="pre">x</span> <span class="pre">bit_len</span></code>.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="memory.Memory.softmax_allocation_weighting">
+<em class="property">static </em><code class="descname">softmax_allocation_weighting</code><span class="sig-paren">(</span><em>usage_vec</em>, <em>alloc_strength</em><span class="sig-paren">)</span><a class="headerlink" href="#memory.Memory.softmax_allocation_weighting" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve the writing allocation weight.</p>
+<p>The ‘usage’ is a number between 0 and 1. The <cite>nonusage</cite> is
+then computed by subtracting 1 from usage. Afterwards, we
+sharpen the <cite>nonusage</cite> to serve as the allocation weighting.</p>
+<p>As for interpretation, the <code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> allocation weighting has
+a weight for each <cite>bit</cite> in the memory matrix. The value of the
+entry, in <cite>[0, 1]</cite>, controls how much the write head may alter
+the bit corresponding with that entry.</p>
+<p>The original paper proposed write allocation based on
+a tricky nondifferentiable sorting operation. This code implements
+allocation using a softmax operation instead, as proposed by
+Ben-Ari, I., Bekker, A. J., [2017] in “Differentiable Memory
+Allocation Mechanism For Neural Computing.”</p>
+<p>In practice, the usage vector may become negative. This
+may be due to numerical error or may be a result of the softmax.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>usage_vec</strong> – The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> corner-vector.</li>
+<li><strong>alloc_strength</strong> – A learned parameter from the interface of
+shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">1</span></code> in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1]</span></code>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Calculated allocation weights.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="memory.Memory.sorting_allocation_weighting">
+<code class="descname">sorting_allocation_weighting</code><span class="sig-paren">(</span><em>usage_vec</em><span class="sig-paren">)</span><a class="headerlink" href="#memory.Memory.sorting_allocation_weighting" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve the writing allocation weight.</p>
+<p>The ‘usage’ is a number between 0 and 1. The <cite>nonusage</cite> is
+then computed by subtracting 1 from usage. Afterwards, we
+sharpen the <cite>nonusage</cite> to serve as the allocation weighting.</p>
+<p>As for interpretation, the <code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> allocation weighting has
+a weight for each <cite>bit</cite> in the memory matrix. The value of the
+entry, in <cite>[0, 1]</cite>, controls how much the write head may alter
+the bit corresponding with that entry.</p>
+<p>First, we sort the indices, comprising</p>
+<div class="math">
+\[\phi_t = \text{SortIndicesAscending(u_t)}\]</div>
+<p>In practice, we use TensorFlow’s built-in sorting, giving us
+<span class="math">\(\phi_t\)</span> <code class="docutils literal"><span class="pre">=</span> <span class="pre">freelist</span></code>. Since <code class="docutils literal"><span class="pre">tf.nn.top_k</span></code> sorts
+descendingly by default, we sort <code class="docutils literal"><span class="pre">nonusage</span></code>, returning
+<code class="docutils literal"><span class="pre">sorted_nonusage</span></code> in addition to <code class="docutils literal"><span class="pre">freelist</span></code>.</p>
+<p>Then, comparing to the paper we have</p>
+<div class="math">
+\[a_t[\phi_t[j]] = (1 - u_t[phi_t[j]]) \prod_{i=1}^{j-1} u_t[phi_t[i]].\]</div>
+<p>Implementing this, notice that <span class="math">\((1 - u_t[phi_t[j]])\)</span>
+<code class="docutils literal"><span class="pre">=</span> <span class="pre">sorted_nonusage[j]</span></code>. Then see that
+<span class="math">\(\prod_{i=1}^{j-1} u_t[phi_t[i]]\)</span> can be computed for all
+<cite>j</cite> using an exclusive cumprod. (Note that it is assumed when <cite>j=1,</cite>
+the term is <cite>1</cite>.) Then, we calculate <code class="docutils literal"><span class="pre">sorted_alloc</span></code>, meaning <cite>in
+order</cite>, by element-wise multiplying <code class="docutils literal"><span class="pre">sorted_nonusage</span></code> and our
+cumulative product vector. Finally, we revert the allocation
+weighting to the original ordering. We gather the <code class="docutils literal"><span class="pre">freelist</span></code>
+entries of <code class="docutils literal"><span class="pre">sorted_alloc</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>usage_vec</strong> – The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> vector.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Calculated allocation weights.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="memory.Memory.update_precedence">
+<em class="property">static </em><code class="descname">update_precedence</code><span class="sig-paren">(</span><em>prev_precedence</em>, <em>write_weights</em><span class="sig-paren">)</span><a class="headerlink" href="#memory.Memory.update_precedence" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the precedence weight vector.</p>
+<p>Comparing to the paper, we have</p>
+<div class="math">
+\[p_t = [ 1 - \sum_{i} (w^w_t[i]) ] p_{t-1} + w^w_t,\]</div>
+<p>which is implemented exactly as written.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>prev_precedence</strong> – The old <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> corner-vector.</li>
+<li><strong>write_weights</strong> – The current <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> corner-vector.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The updated precedence weighting.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="memory.Memory.update_read_weights">
+<em class="property">static </em><code class="descname">update_read_weights</code><span class="sig-paren">(</span><em>prev_read_weights</em>, <em>link_mat</em>, <em>read_content_lookup</em>, <em>read_modes</em><span class="sig-paren">)</span><a class="headerlink" href="#memory.Memory.update_read_weights" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the read weights.</p>
+<p>Comparing to the paper, we have</p>
+<div class="math">
+\[w^{r,i}_t = \pi^i_t[1]b^i_t + \pi^i_t[2]c^{r,i}_t + \pi^i_t[3]f^1_t\]</div>
+<p>where <span class="math">\(w^{r,i}_t\)</span> is the read weight for read head <span class="math">\(i\)</span>,
+<span class="math">\(pi^i_t\)</span> is the read mode vector for read head <span class="math">\(i,\)</span> and</p>
+<div class="math">
+\[\begin{split}f^1_t &amp;= L_t w^{r,i}_{t-1}, \\
+b^i_t &amp;= (L_t)^T w^{r,i}_{t-1} \text{ and } \\
+c^{r,i}_t &amp;= C(M_t, k^{r,i}_t, \beta^{r,i}_t). \\\end{split}\]</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>prev_read_weights</strong> – The old tensor of corner-vectors for each read
+head, with shape of <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">num_heads</span></code>.</li>
+<li><strong>link_mat</strong> – The current <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> temporal
+link matrix.</li>
+<li><strong>read_content_lookup</strong> – A tensor of corner-vectors for each read head,
+with shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">num_heads</span></code>.</li>
+<li><strong>read_modes</strong> – A tensor of unit vectors for each read head, having
+shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">3</span> <span class="pre">x</span> <span class="pre">num_heads</span></code>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The new read weights.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="memory.Memory.update_temporal_link">
+<code class="descname">update_temporal_link</code><span class="sig-paren">(</span><em>prev_link_mat</em>, <em>write_weights</em>, <em>prev_precedence</em><span class="sig-paren">)</span><a class="headerlink" href="#memory.Memory.update_temporal_link" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the temporal link matrix.</p>
+<p>Comparing to the paper, we have</p>
+<div class="math">
+\[\begin{split}L_t[i,j] &amp;= (1-w^w_t[i]-w^w_t[j]) L_{t-1}[i,j] + w^w_t[i] p_{t-1}[j] \\
+L_t[i,i] &amp;= 0\end{split}\]</div>
+<p>where <span class="math">\(w^w_t\)</span> is the write weight corner-vector and <span class="math">\(p_t\)</span>
+is the precedence corner-vector.</p>
+<p>The actual implementation is different. Instead we broadcast
+write_weights into a <code class="docutils literal"><span class="pre">(batch_size)</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">mem_len</span></code>
+matrix <code class="docutils literal"><span class="pre">expanded_weights</span></code> of the form</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="p">[[</span> <span class="n">w</span><span class="o">^</span><span class="n">w</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>    <span class="n">w</span><span class="o">^</span><span class="n">w</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>    <span class="o">...</span>  <span class="n">w</span><span class="o">^</span><span class="n">w</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>    <span class="p">]</span>
+ <span class="p">[</span> <span class="n">w</span><span class="o">^</span><span class="n">w</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>    <span class="n">w</span><span class="o">^</span><span class="n">w</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>    <span class="o">...</span>  <span class="n">w</span><span class="o">^</span><span class="n">w</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>    <span class="p">]</span>
+ <span class="o">...</span>
+ <span class="p">[</span> <span class="n">w</span><span class="o">^</span><span class="n">w</span><span class="p">[</span><span class="n">m</span><span class="o">.</span><span class="n">l</span><span class="o">.</span><span class="p">]</span> <span class="n">w</span><span class="o">^</span><span class="n">w</span><span class="p">[</span><span class="n">m</span><span class="o">.</span><span class="n">l</span><span class="o">.</span><span class="p">]</span> <span class="o">...</span>  <span class="n">w</span><span class="o">^</span><span class="n">w</span><span class="p">[</span><span class="n">m</span><span class="o">.</span><span class="n">l</span><span class="o">.</span><span class="p">]</span> <span class="p">]],</span>
+</pre></div>
+</div>
+<p>then performing <code class="docutils literal"><span class="pre">1</span> <span class="pre">-</span> <span class="pre">expanded_weights</span> <span class="pre">-</span> <span class="pre">transpose(expanded_weights)</span></code>.
+Then we element-wise multiply the previous temporal link matrix.
+At this point we have <span class="math">\((1 - w^w_t[i]-w^w_t[j]) L_{t-1}[i,j]\)</span>
+for all <span class="math">\(i,j.\)</span></p>
+<p>Then, we multiply the write weights by the precedence weights and
+add to the previous operations. This comprises
+<span class="math">\(... + w^w_t[i] p_{t-1}[j]\)</span> for all <span class="math">\(i,j.\)</span>.</p>
+<p>Finally, we subtract our result from an identity matrix to
+eliminate self-links in the temporal link matrix.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>prev_link_mat</strong> – The old <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">mem_len</span></code>
+temporal link matrix.</li>
+<li><strong>write_weights</strong> – The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> write weighting
+corner-vector.</li>
+<li><strong>prev_precedence</strong> – The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> precedence
+corner-vector.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The new temporal link matrix.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="memory.Memory.update_write_weights">
+<em class="property">static </em><code class="descname">update_write_weights</code><span class="sig-paren">(</span><em>alloc_weights</em>, <em>write_content_lookup</em>, <em>alloc_gate</em>, <em>write_gate</em><span class="sig-paren">)</span><a class="headerlink" href="#memory.Memory.update_write_weights" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update write weights to reflect allocation decisions.</p>
+<p>Comparing to the formula, we have</p>
+<div class="math">
+\[g^w_t[g^a_t a_t + (1 - g^a_t)c^w_t]\]</div>
+<p>where <span class="math">\(g^a_t\)</span> in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1]</span></code> is the allocation gate, <span class="math">\(a_t\)</span>
+is the allocation corner-vector, <span class="math">\(g^w_t\)</span> in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1]</span></code> is the
+write gate, <span class="math">\((1 - g^a_t)\)</span> is the “unallocation gate,” and
+<span class="math">\(c^w_t\)</span> is the writing content lookup.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>alloc_weights</strong> – The tensor of size <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span></code>.</li>
+<li><strong>write_content_lookup</strong> – A unit vector of size
+<code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">1</span></code>.</li>
+<li><strong>write_gate</strong> – A scalar in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1]</span></code> for each batch entry having
+shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">1</span></code>.</li>
+<li><strong>alloc_gate</strong> – A scalar in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1]</span></code> for each batch entry having
+shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">1</span></code>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><dl class="docutils">
+<dt>The new write weights, a corner-vector of size</dt>
+<dd><p class="first last"><code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span></code>.</p>
+</dd>
+</dl>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="memory.Memory.usage_update">
+<em class="property">static </em><code class="descname">usage_update</code><span class="sig-paren">(</span><em>prev_usage</em>, <em>write_weights</em>, <em>read_weights</em>, <em>free_gates</em><span class="sig-paren">)</span><a class="headerlink" href="#memory.Memory.usage_update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the usage vector.</p>
+<p>Comparing to the paper,</p>
+<div class="math">
+\[u_t = (u_{t-1} + w^w_{t-1} - (u_{t-1} \odot w^w_{t-1})) \odot \psi_t\]</div>
+<p>such that</p>
+<div class="math">
+\[\psi_t = \prod_{i=1}^R (1-f^i_t w^{r,i}_{t-1}).\]</div>
+<p>Notice that <span class="math">\(f^i_t\)</span> is the ith of <code class="docutils literal"><span class="pre">num_heads</span></code> free gates
+emitted by the controller. Each free gate is in <code class="docutils literal"><span class="pre">[0,1]</span></code>. And,
+<span class="math">\(w^w_{t-1}\)</span> is the old computed write weight vector. Finally,
+<span class="math">\(w^{r,i}_{t-1}\)</span> is the old computed read weight.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>prev_usage_vec</strong> – A real valued usage vector of shape
+<code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span></code>.</li>
+<li><strong>write_weights</strong> – A corner-vector (weaker all-positive unit vector)
+of shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span></code>.</li>
+<li><strong>read_weights</strong> – A tensor of corner vectors for each read head having
+shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">num_heads</span></code>.</li>
+<li><strong>free_gates</strong> – A vector of shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">1</span> <span class="pre">x</span> <span class="pre">num_heads</span></code>
+with each element in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1]</span></code>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The new usage vector according to the above formulae.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, Dylan Flaute.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

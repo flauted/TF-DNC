@@ -1,0 +1,455 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>DNCv3 module &mdash; DNC .1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="DNC .1 documentation" href="index.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> DNC
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">DNCv3 module</a></li>
+</ul>
+</div>
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">DNC</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>DNCv3 module</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/DNCv3.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="module-DNCv3">
+<span id="dncv3-module"></span><h1>DNCv3 module<a class="headerlink" href="#module-DNCv3" title="Permalink to this headline">¶</a></h1>
+<p>Define a differentiable neural computer with alternative allocation.</p>
+<p>The differentiable neural computer was introduced by Graves, A., et. al. [2016]
+as a neural network model with a dynamic memory modeled after the modern
+CPU and RAM setup.</p>
+<dl class="class">
+<dt id="DNCv3.DNC">
+<em class="property">class </em><code class="descclassname">DNCv3.</code><code class="descname">DNC</code><span class="sig-paren">(</span><em>input_size</em>, <em>output_size</em>, <em>seq_len</em>, <em>controller=None</em>, <em>mem_len=256</em>, <em>bit_len=64</em>, <em>num_heads=4</em>, <em>batch_size=1</em>, <em>softmax_allocation=True</em><span class="sig-paren">)</span><a class="headerlink" href="#DNCv3.DNC" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">tensorflow.python.ops.rnn_cell_impl.RNNCell</span></code></p>
+<p>Create a differentiable neural computer.</p>
+<p>The DNC is a sequence-to-sequence model that is completely
+differentiable. It features a built-in memory.</p>
+<p>Comparing to the paper glossary available at
+<a class="reference external" href="https://www.readcube.com/articles/supplement?doi=10.1038%2Fnature20101&amp;index=12&amp;ssl=1&amp;st=acd80c7ede3649cb0f4345bcdc01ec12&amp;preview=1">https://www.readcube.com/articles/supplement?doi=10.1038%2Fnature20101&amp;index=12&amp;ssl=1&amp;st=acd80c7ede3649cb0f4345bcdc01ec12&amp;preview=1</a>
+we have</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">W</span> <span class="o">&lt;=&gt;</span> <span class="n">bit_len</span> <span class="p">(</span><span class="n">memory</span> <span class="n">word</span> <span class="n">size</span><span class="p">)</span>
+<span class="n">N</span> <span class="o">&lt;=&gt;</span> <span class="n">mem_len</span> <span class="p">(</span><span class="n">number</span> <span class="n">of</span> <span class="n">memory</span> <span class="n">locations</span><span class="p">)</span>
+<span class="n">R</span> <span class="o">&lt;=&gt;</span> <span class="n">num_heads</span> <span class="p">(</span><span class="n">number</span> <span class="n">of</span> <span class="n">read</span> <span class="n">heads</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input_size</strong> (<em>int</em>) – Size of a row of input to <code class="docutils literal"><span class="pre">run</span></code> method.</li>
+<li><strong>output_size</strong> (<em>int</em>) – Expected size of output from <code class="docutils literal"><span class="pre">run</span></code>.</li>
+<li><strong>seq_len</strong> (<em>int</em>) – Number of rows of input.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Keyword Arguments:</th></tr>
+<tr class="field-even field"><td>&#160;</td><td class="field-body"><ul class="first last simple">
+<li><strong>mem_len</strong> (<em>int</em><em>, </em><em>256</em>) – Number of slots in memory.</li>
+<li><strong>bit_len</strong> (<em>int</em><em>, </em><em>64</em>) – Length of a slot in memory.</li>
+<li><strong>num_heads</strong> (<em>int</em><em>, </em><em>4</em>) – Number of read heads.</li>
+<li><strong>batch_size</strong> (<em>int</em><em>, </em><em>1</em>) – Length of the batch.</li>
+<li><strong>softmax_allocation</strong> (<em>bool</em><em>, </em><em>True</em>) – Use the alternative softmax writing
+allocation or the original formulation.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="DNCv3.DNC.output_width">
+<code class="descname">output_width</code><a class="headerlink" href="#DNCv3.DNC.output_width" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>arg, output_size</em></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv3.DNC.mem_len">
+<code class="descname">mem_len</code><a class="headerlink" href="#DNCv3.DNC.mem_len" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>arg</em></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv3.DNC.bit_len">
+<code class="descname">bit_len</code><a class="headerlink" href="#DNCv3.DNC.bit_len" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>arg</em></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv3.DNC.num_heads">
+<code class="descname">num_heads</code><a class="headerlink" href="#DNCv3.DNC.num_heads" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>arg</em></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv3.DNC.batch_size">
+<code class="descname">batch_size</code><a class="headerlink" href="#DNCv3.DNC.batch_size" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>arg</em></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv3.DNC.softmax_allocation">
+<code class="descname">softmax_allocation</code><a class="headerlink" href="#DNCv3.DNC.softmax_allocation" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>arg</em></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv3.DNC.interface_size">
+<code class="descname">interface_size</code><a class="headerlink" href="#DNCv3.DNC.interface_size" title="Permalink to this definition">¶</a></dt>
+<dd><p><code class="docutils literal"><span class="pre">num_heads*bit_len</span> <span class="pre">+</span> <span class="pre">3*bit_len</span> <span class="pre">+</span> <span class="pre">5*num_heads</span> <span class="pre">+</span> <span class="pre">3</span></code> – Size of emitted interface vector.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv3.DNC.nn_input_size">
+<code class="descname">nn_input_size</code><a class="headerlink" href="#DNCv3.DNC.nn_input_size" title="Permalink to this definition">¶</a></dt>
+<dd><p><code class="docutils literal"><span class="pre">num_heads*bit_len</span> <span class="pre">+</span> <span class="pre">input_size</span></code> – Size of concatted
+read and input vector.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv3.DNC.nn_output_size">
+<code class="descname">nn_output_size</code><a class="headerlink" href="#DNCv3.DNC.nn_output_size" title="Permalink to this definition">¶</a></dt>
+<dd><p><code class="docutils literal"><span class="pre">output_size</span> <span class="pre">+</span> <span class="pre">interface_size</span></code> – Size of concatted
+prediction and interface vector.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv3.DNC.controller">
+<code class="descname">controller</code><a class="headerlink" href="#DNCv3.DNC.controller" title="Permalink to this definition">¶</a></dt>
+<dd><p><code class="docutils literal"><span class="pre">None</span></code> – A user defined callable (function / instance
+with a <code class="docutils literal"><span class="pre">__call__</span></code> method).</p>
+<blockquote>
+<div>NOTE: If you need <code class="docutils literal"><span class="pre">nn_input_size</span></code> or <code class="docutils literal"><span class="pre">nn_output_size</span></code> to
+define the controller, use <cite>myDNC.install_controller(callable)</cite>
+after initializing myDNC.</div></blockquote>
+</dd></dl>
+
+<dl class="method">
+<dt id="DNCv3.DNC.final_prediction">
+<code class="descname">final_prediction</code><span class="sig-paren">(</span><em>nn_out</em>, <em>read_vecs</em><span class="sig-paren">)</span><a class="headerlink" href="#DNCv3.DNC.final_prediction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct the output y_t from the nn_out and read memory.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>nn_out</strong> – The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">output_size</span></code> prediction from
+the controller.</li>
+<li><strong>read_vecs</strong> – The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">bit_len</span> <span class="pre">x</span> <span class="pre">num_heads</span></code> output from
+memory interaction.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">output_size</span></code> final predictions.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="DNCv3.DNC.install_controller">
+<code class="descname">install_controller</code><span class="sig-paren">(</span><em>controller</em><span class="sig-paren">)</span><a class="headerlink" href="#DNCv3.DNC.install_controller" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the controller for the DNC.</p>
+<p>The input is expected to be a callable that maps from size
+<code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">nn_input_size</span></code> to size <code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">nn_output_size.</span></code> Recall
+that <code class="docutils literal"><span class="pre">nn_input_size</span> <span class="pre">=</span> <span class="pre">input_size</span> <span class="pre">+</span> <span class="pre">num_heads*bit_len</span></code> and
+that <code class="docutils literal"><span class="pre">nn_output_size</span> <span class="pre">=</span> <span class="pre">output_size</span> <span class="pre">+</span> <span class="pre">interface_size.</span></code> Note that
+the controller object is <cite>not</cite> responsible for emitting seperate
+prediction and interface vectors.</p>
+<p>The controller may be a function installed without <code class="docutils literal"><span class="pre">()</span></code> or
+an object with a <code class="docutils literal"><span class="pre">__call__</span></code> method. If the controller is an object,
+it may be initialized with DNC object attributes, especially
+<code class="docutils literal"><span class="pre">myDNC.nn_input_size</span></code> and <code class="docutils literal"><span class="pre">myDNC.nn_output_size</span></code>.</p>
+<p>As for mathematical discussion, the controller maps the time
+step input <span class="math">\(x_t\)</span> concatenated with the interpreted
+information read from memory by each head, <span class="math">\(r^i_{t-1}\)</span>,
+to the prediction and the interface vector. The interface vector
+controls the memory interactions. Precisely</p>
+<div class="math">
+\[\text{ctrlr}([x_t;r^1_{t-1};...;r^R_{t-1}]) \mapsto ([\hat{y}_t; \hat{\zeta}_t])\]</div>
+<p>where <span class="math">\(r^i_{t-1}\)</span> is the interpreted information from read vector
+<cite>i</cite> at the previous time step.</p>
+<p>To be clear, <span class="math">\([\cdot ; \cdot]\)</span> denotes concatenation
+and <span class="math">\([\hat{y}_t; \hat{\zeta}_t]\)</span> is the vector denoting
+the prediction evidence and the interface evidence. Outside
+the controller object, the DNC multiplies the vector emmited by
+the controller by the output weights <span class="math">\(W^y_t\)</span> and then
+again by the interface weights <span class="math">\(W^\zeta_t\)</span>. In other words,
+the DNC converts the <code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">nn_output_size</span> <span class="pre">=</span>
+<span class="pre">1</span> <span class="pre">x</span> <span class="pre">output_size</span> <span class="pre">+</span> <span class="pre">interface_size</span></code> vector to one prediction of length
+<code class="docutils literal"><span class="pre">output_size</span></code> and another interface vector of length
+<code class="docutils literal"><span class="pre">interface_size</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>controller</strong> – A callable to predict outputs and select
+interface variables. The controller must take only one
+argument, a tensor of size <code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">nn_input_size</span></code>,
+and return only one tensor of size <code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">nn_output_size.</span></code></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Examples</p>
+<p>We may use an initialized object:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">myDNC</span> <span class="o">=</span> <span class="n">DNC</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="n">controller</span> <span class="o">=</span> <span class="n">MLPClass</span><span class="p">(</span><span class="n">in_size</span><span class="o">=</span><span class="n">myDNC</span><span class="o">.</span><span class="n">nn_input_size</span><span class="p">,</span>
+                      <span class="n">out_size</span><span class="o">=</span><span class="n">myDNC</span><span class="o">.</span><span class="n">nn_output_size</span><span class="p">,</span>
+                      <span class="n">hidden_size</span><span class="o">=</span><span class="mi">32</span><span class="p">)</span>
+<span class="n">myDNC</span><span class="o">.</span><span class="n">install_controller</span><span class="p">(</span><span class="n">controller</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In this case, <code class="docutils literal"><span class="pre">controller</span></code> <cite>must</cite> have a __call__ method
+taking only one argument: the input to the DNC at that timestep
+concatenated with the <code class="docutils literal"><span class="pre">num_heads</span></code> read vectors.</p>
+<p>Or, we may use a function:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">net</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="c1"># x is [1, nn_input_size]</span>
+    <span class="o">...</span>
+    <span class="c1"># y is [1, nn_output_size]</span>
+    <span class="k">return</span> <span class="n">y</span>
+<span class="n">myDNC</span><span class="o">.</span><span class="n">install_controller</span><span class="p">(</span><span class="n">net</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv3.DNC.output_size">
+<code class="descname">output_size</code><a class="headerlink" href="#DNCv3.DNC.output_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>The expected shape of the DNC prediction.</p>
+<p>This is a required property to use the DNC as an RNN in TensorFlow.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DNCv3.DNC.state_size">
+<code class="descname">state_size</code><a class="headerlink" href="#DNCv3.DNC.state_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attach the size of state variables to the object.</p>
+<p>An AccessState named tuple of the sizes (excluding batch per
+TensorFlow) of state variables memory, usage vector, link matrix,
+precedence weighting, write weighting, read weighting, and read
+vectors.</p>
+<p>This is a required property to use the DNC as an RNN in TensorFlow.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="DNCv3.DNC.zero_state">
+<code class="descname">zero_state</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#DNCv3.DNC.zero_state" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the initial state of the DNC in tuple form.</p>
+<p>The memory, usage vector, link matrix, and precedence weighting
+are initialized to zeros. The read weights and write weights are
+filled with a small, nonnegative number, <code class="docutils literal"><span class="pre">1e-6</span></code>, and the
+read vecs are randomly initialized. All are <code class="docutils literal"><span class="pre">tf.Variable</span></code> objects.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, Dylan Flaute.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

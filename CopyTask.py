@@ -92,13 +92,19 @@ def run_training(seq_len=6,
                  num_read_heads=1,
                  batch_size=1,
                  softmax_alloc=False,
+                 stateful=True,
                  tb_dir="tb/dnc"):
     """Run training loop."""
     graph = tf.Graph()
 
     with graph.as_default():
         with tf.Session() as sess:
-            sess = tf_debug.LocalCLIDebugWrapperSession(sess)
+            # sess = tf_debug.LocalCLIDebugWrapperSession(sess)
+            i_data = tf.placeholder(tf.float32,
+                                    [batch_size, seq_len*2, seq_width])
+            o_data = tf.placeholder(tf.float32,
+                                    [batch_size, seq_len*2, seq_width])
+
             dnc = DNC(
                 input_size=seq_width,
                 output_size=seq_width,
@@ -110,13 +116,18 @@ def run_training(seq_len=6,
                 softmax_allocation=softmax_alloc)
             dnc.install_controller(
                 MLPModel(dnc.nn_input_size, 128, dnc.nn_output_size))
-            i_data = tf.placeholder(tf.float32, [batch_size, seq_len*2, seq_width])
-            o_data = tf.placeholder(tf.float32, [batch_size, seq_len*2, seq_width])
-            output, new_state = tf.nn.dynamic_rnn(dnc,
-                                              i_data,
-                                              initial_state=dnc.zero_state(),
-                                              scope="DNC",
-                                              parallel_iterations=1)
+            initial_state = dnc.zero_state()
+            output, new_state = tf.nn.dynamic_rnn(
+                dnc,
+                i_data,
+                initial_state=initial_state,
+                scope="DNC",
+                parallel_iterations=1)
+
+            if stateful:
+                update_ops = []
+                for init_var, new_var in zip(initial_state, new_state):
+                    update_ops.extend([init_var.assign(new_var)])
 
             loss = evaluate(seq_len=seq_len, seq_width=seq_width,
                             labels=o_data, logits=output)
@@ -128,17 +139,21 @@ def run_training(seq_len=6,
             for epoch in range(0, iterations+1):
                 curr_i_data, curr_o_data = data(seq_len, seq_width, batch_size)
                 feed_dict = {i_data: curr_i_data, o_data: curr_o_data}
-                predictions, current_loss, _ = sess.run(
-                    [output, loss, apply_gradients],
+
+                predictions, current_loss, _, _ = sess.run(
+                    [output, loss, apply_gradients,
+                     update_ops if stateful else tf.no_op()],
                     feed_dict=feed_dict)
+
                 if epoch % 100 == 0:
                     print("Epoch {}: Loss {}".format(epoch, current_loss))
-            print("Final inputs:")
-            print(i_data)
-            print("Final targets:")
-            print(o_data)
-            print("Final predictions:")
-            print(predictions)
+
+    print("Final inputs:")
+    print(curr_i_data)
+    print("Final targets:")
+    print(curr_o_data)
+    print("Final predictions:")
+    print(predictions)
 
 
 def main(argv=None):

@@ -1,67 +1,92 @@
 """Create a memory module for the DNC."""
 import tensorflow as tf
 import numpy as np
-import DNCv3 as dnc
+import collections
 
+
+AccessState = collections.namedtuple(
+    'AccessState', ('mem',
+                    'usage',
+                    'link',
+                    'precedence',
+                    'read_weights',
+                    'write_weights',
+                    'read_vecs'))
 
 class Memory:
     r"""Implement the memory module of the differentiable neural computer.
-    
-    The interaction is as follows:
-        * Split up controller interface vector.
-        * Make write weights:
-            - Free gates determine "whether the most recently read locations
-              can be freed."
-            - Retention vector :math:`\psi` "represents by how much each
-              location will NOT be freed by the free gates." Each entry is
-              in ``[0, 1]``.
-            - Usage: A location has high usage if it has been retained by
-              the free gates (:math:`\psi` near 1), AND usage of the location
-              at the last timestep was high or the location was just written
-              to (previous write weights near 1).
-            - Allocation: A sharpened, inverted usage whose elements are in
-              ``[0, 1]`` and  sum to at most 1. ``Allocate``, or write to 
-              locations with a low usage.
-            - Write weights: The controller gate determines whether to write
-              to a new location (alloc gate), a location with high content
-              similarity (1 - alloc gate), or not write at all (write gate).
-              Each entry is in ``[0, 1]`` and the vector sums to at most
-              1. Thinking of the weight vector as a probability distribution,
-              the remainder of 1 - sum(weights) is the probability of
-              accessing no memory location at all (called null operations).
-        * Write memory. Alter memory location ``[i, j]`` as follows:
-            - Scale down by 1 minus the ith entry of write weights times 
-              jth entry of erase vector, a factor in ``[0, 1]``.
-            - Add ith entry of write weights times jth entry of write vector.
-            - In this sense, the write weights determine a scale for each
-              row, while the write and erase vectors carry information for
-              all the columns.
-        * Make read weights:
-            - The temporal link matrix retains the writing order. An entry
-              ``[i, j]`` encodes "the degree to which location `i` ... is
-              written to after location `j`." Each row and column of L defines
-              a probability distribution over the locations, with nulls.
-            - Precedence: Each element represents how close that location
-              was to the most recent writing. If precedence is high,
-              the memory location has changed a lot recently.
-            - The following happens for each read head:
-            - Forward/Backward weighting: Redistribute the previous read
-              weighting based on the TLM. The backward weighting is determined
-              by transposing the TLM, effectively reversing the ordering.
-            - Read weights: The read modes is a probability distribution 
-              (elements in ``[0, 1]`` summing to 1 exactly) that controls how
-              the read weights function. If element 1 is high, the reading
-              happens in the reverse order of writing (backward weighting
-              dominates). If element 2 is high, the reading happens on 
-              locations where there is a high degree of similarity between
-              the location and the read key. If element 3 is high, the reading 
-              happens in the order of the TLM. (By order, obviously reading
-              is not literally temporal; the action does not occur in
-              sequence. It means that e.g. if element 1 of the read modes is
-              high, the information in the oldest memory location is
-              factored in highest in the head's read vector.)
-        * Read memory. Multiply the memory by the read weights for each head
-          to give the read (past tense) vectors.
+
+    The interaction is as follows
+
+    * Split up controller interface vector.
+
+    * Make write weights
+
+        - Free gates determine "whether the most recently read locations
+          can be freed."
+        - Retention vector :math:`\psi` "represents by how much each
+          location will NOT be freed by the free gates." Each entry is
+          in ``[0, 1]``.
+        - Usage: A location has high usage if it has been retained by
+          the free gates (:math:`\psi` near 1), AND usage of the location
+          at the last timestep was high or the location was just written
+          to (previous write weights near 1).
+
+    A nice proof that usage stays in ``[0, 1]`` is provided in section 6.3
+    of "Implementation and Optimization of Differentiable Neural Computers"
+    by C. Hsin.
+
+        - Allocation: A sharpened, inverted usage whose elements are in
+          ``[0, 1]`` and  sum to at most 1. ``Allocate``, or write to
+          locations with a low usage.
+        - Write weights: The controller gate determines whether to write
+          to a new location (alloc gate), a location with high content
+          similarity (1 - alloc gate), or not write at all (write gate).
+          Each entry is in ``[0, 1]`` and the vector sums to at most
+          1.
+
+    Thinking of the weight weights as a probability distribution,
+    the remainder of ``1 - sum(weights)`` is the probability of
+    accessing no memory location at all (called null operations).
+
+    * Write memory. Alter memory location ``[i, j]`` as follows
+
+        - Scale down by 1 minus the ith entry of write weights times
+          jth entry of erase vector, a factor in ``[0, 1]``.
+        - Add ith entry of write weights times jth entry of write vector.
+        - In this sense, the write weights determine a scale for each
+          row, while the write and erase vectors carry information for
+          all the columns.
+
+    * Make read weights
+
+        - The temporal link matrix retains the writing order. An entry
+          ``[i, j]`` encodes "the degree to which location `i` ... is
+          written to after location `j`." Each row and column of L defines
+          a probability distribution over the locations, with nulls.
+        - Precedence: Each element represents how close that location
+          was to the most recent writing. If precedence is high,
+          the memory location has changed a lot recently.
+        - The following happens for each read head
+        - Forward/Backward weighting: Redistribute the previous read
+          weighting based on the TLM. The backward weighting is determined
+          by transposing the TLM, effectively reversing the ordering.
+        - Read weights: The read modes is a probability distribution
+          (elements in ``[0, 1]`` summing to 1 exactly) that controls how
+          the read weights function. If element 1 is high, the reading
+          happens in the reverse order of writing (backward weighting
+          dominates). If element 2 is high, the reading happens on
+          locations where there is a high degree of similarity between
+          the location and the read key. If element 3 is high, the reading
+          happens in the order of the TLM.
+
+    By "order," obviously we do not mean literal iteration; the action
+    does not occur in sequence. It means that e.g. if element 1 of the
+    read modes is high, the information in the oldest memory location is
+    factored in highest in the head's read vector.)
+
+    * Read memory. Multiply the memory by the read weights for each head
+      to give the read (past tense) vectors.
 
     """
 
@@ -435,9 +460,9 @@ class Memory:
             write_weights: The computed write weighting corner-vector of size
                 ``mem_len x 1``.
             erase_vec: The emitted erase vector of size
-                ``batch_size x bit_len``.
+                ``batch_size x 1 x bit_len``.
             write_vec: The emitted write vector of size
-                ``batch_size x bit_len``.
+                ``batch_size x 1 x bit_len``.
         Returns:
             The updated memory matrix.
 
@@ -582,21 +607,17 @@ class Memory:
 
         """
         with tf.variable_scope("forw_weights"):
-            # mem_len x num_heads
             forw_w = tf.expand_dims(read_modes[:, 2, :], 1)*tf.matmul(
                 link_mat, prev_read_weights)
 
         with tf.variable_scope("cont_weights"):
-            # mem_len x num_heads
             cont_w = tf.expand_dims(read_modes[:, 1, :], 1)*read_content_lookup
 
         with tf.variable_scope("back_weights"):
-            # mem_len x num_heads
             back_w = tf.expand_dims(read_modes[:, 0, :], 1)*tf.matmul(
                 link_mat, prev_read_weights, transpose_a=True)
 
         with tf.variable_scope("read_weights"):
-            # mem_len x num_heads
             read_weights = back_w + cont_w + forw_w
         return read_weights
 
@@ -619,13 +640,27 @@ class Memory:
             read_vecs = tf.matmul(read_weights, memory, transpose_a=True)
         return read_vecs
 
-    def _interact_with_memory(self, nn_out, interface_vec, prev_state):
+    def _interact_with_memory(self, interface_vec, prev_state):
         """Step up m.
 
         Receive input data and a set of read vectors from
         memory matrix at the previous timestep. Emit output data
         and interface vector defining memory interactions at
         current timestep.
+
+        Args:
+            interface_vec: The ``batch_size x 1 x interface_size`` interface
+                vector emitted by the controller.
+            prev_state: The AccessState named tuple of state values memory,
+                usage, link matrix, precedence, write weights, read weights,
+                and previous read vectors.
+
+        Returns:
+            The read vectors, a tensor of shape
+                ``batch_size x num_heads x bit_len`` of values read
+                from memory.
+            An AccessState named tuple with the new state values.
+
         """
         with tf.variable_scope("Mem_Man"):
             int_parts = self.interface_partition(
@@ -690,10 +725,10 @@ class Memory:
                 mem,
                 read_weights)
 
-        return read_vecs, dnc.AccessState(mem=mem,
-                                          usage=usage_vec,
-                                          write_weights=write_weights,
-                                          link=link_mat,
-                                          precedence=precedence_weight,
-                                          read_weights=read_weights,
-                                          read_vecs=read_vecs)
+        return read_vecs, AccessState(mem=mem,
+                                      usage=usage_vec,
+                                      write_weights=write_weights,
+                                      link=link_mat,
+                                      precedence=precedence_weight,
+                                      read_weights=read_weights,
+                                      read_vecs=read_vecs)

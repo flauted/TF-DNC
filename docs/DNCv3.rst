@@ -1,7 +1,7 @@
-DNCv2 module
+DNCv3 module
 ============
 
-.. automodule:: DNCv2
+.. automodule:: DNCv3
     :members:
     :undoc-members:
     :show-inheritance:

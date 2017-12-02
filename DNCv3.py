@@ -5,18 +5,7 @@ as a neural network model with a dynamic memory modeled after the modern
 CPU and RAM setup.
 """
 import tensorflow as tf
-import collections
-from memory import Memory
-
-
-AccessState = collections.namedtuple(
-    'AccessState', ('mem',
-                    'usage',
-                    'link',
-                    'precedence',
-                    'read_weights',
-                    'write_weights',
-                    'read_vecs'))
+from memory import Memory, AccessState
 
 
 class DNC(tf.nn.rnn_cell.RNNCell):
@@ -105,6 +94,13 @@ class DNC(tf.nn.rnn_cell.RNNCell):
             read_vecs=tf.TensorShape([num_heads, bit_len]))
 
     def zero_state(self):
+        """Return the initial state of the DNC in tuple form.
+
+        The memory, usage vector, link matrix, and precedence weighting
+        are initialized to zeros. The read weights and write weights are
+        filled with a small, nonnegative number, ``1e-6``, and the 
+        read vecs are randomly initialized. All are ``tf.Variable`` objects.
+        """
         with tf.variable_scope("zero_state"):
             return AccessState(
                 mem=tf.Variable(
@@ -135,10 +131,23 @@ class DNC(tf.nn.rnn_cell.RNNCell):
 
     @property
     def output_size(self):
+        """The expected shape of the DNC prediction.
+        
+        This is a required property to use the DNC as an RNN in TensorFlow.
+        """
         return tf.TensorShape([self.output_width])
 
     @property
     def state_size(self):
+        """Attach the size of state variables to the object.
+        
+        An AccessState named tuple of the sizes (excluding batch per
+        TensorFlow) of state variables memory, usage vector, link matrix,
+        precedence weighting, write weighting, read weighting, and read
+        vectors.
+        
+        This is a required property to use the DNC as an RNN in TensorFlow.
+        """
         return self._access_shapes
 
     def install_controller(self, controller):
@@ -257,7 +266,18 @@ class DNC(tf.nn.rnn_cell.RNNCell):
         return nn_out, interface_vec
 
     def final_prediction(self, nn_out, read_vecs):
-        """Construct the output y_t from the nn_out and read memory."""
+        """Construct the output y_t from the nn_out and read memory.
+        
+        Args:
+            nn_out: The ``batch_size x output_size`` prediction from
+                the controller.
+            read_vecs: The ``batch_size x bit_len x num_heads`` output from
+                memory interaction.
+                
+        Returns:
+            The ``batch_size x output_size`` final predictions.
+
+        """
         with tf.variable_scope("y_t"):
             read_vecs_out_weight = tf.get_variable(
                 "readout_weights",
@@ -279,6 +299,6 @@ class DNC(tf.nn.rnn_cell.RNNCell):
                 nn_out, int_vec = self._controller(
                     inputs, prev_state.read_vecs)
             read_vecs, _state = self._memory._interact_with_memory(
-                nn_out, int_vec, prev_state)
+                int_vec, prev_state)
             y_t = self.final_prediction(nn_out, read_vecs)
         return y_t, _state
