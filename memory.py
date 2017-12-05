@@ -162,64 +162,65 @@ class Memory:
                 self.num_heads*3]
             start_idxs = np.cumsum([0] + entries_per_part)
 
-            int_parts = {}
+            intrfc = {}
 
             with tf.variable_scope("read_keys"):
                 keys_r = interface_vec[:, start_idxs[0]:start_idxs[1]]
-                int_parts["read_keys"] = tf.reshape(
+                intrfc["read_keys"] = tf.reshape(
                     keys_r, [self.batch_size, self.bit_len, self.num_heads])
 
             with tf.variable_scope("read_strength"):
                 B_r_hat = interface_vec[:, start_idxs[1]:start_idxs[2]]
                 B_r = 1 + tf.nn.softplus(B_r_hat)
-                int_parts["read_strengths"] = tf.expand_dims(B_r, 1)
+                intrfc["read_strengths"] = tf.expand_dims(B_r, 1)
 
             with tf.variable_scope("write_key"):
                 key_w = interface_vec[:, start_idxs[2]:start_idxs[3]]
-                int_parts["write_key"] = tf.expand_dims(key_w, 2)
+                intrfc["write_key"] = tf.expand_dims(key_w, 2)
 
             with tf.variable_scope("write_strength"):
                 B_w_hat = interface_vec[:, start_idxs[3]:start_idxs[4]]
                 B_w = 1 + tf.nn.softplus(B_w_hat)
-                int_parts["write_strength"] = tf.expand_dims(B_w, 1)
+                intrfc["write_strength"] = tf.expand_dims(B_w, 1)
 
             with tf.variable_scope("erase_vec"):
                 e_hat = interface_vec[:, start_idxs[4]:start_idxs[5]]
                 e_ = tf.nn.sigmoid(e_hat)
-                int_parts["erase_vec"] = tf.expand_dims(e_, 1)
+                intrfc["erase_vec"] = tf.expand_dims(e_, 1)
 
             with tf.variable_scope("write_vec"):
                 v_ = interface_vec[:, start_idxs[5]:start_idxs[6]]
-                int_parts["write_vec"] = tf.expand_dims(v_, 1)
+                intrfc["write_vec"] = tf.expand_dims(v_, 1)
 
             with tf.variable_scope("free_gates"):
                 f_r_hat = interface_vec[:, start_idxs[6]:start_idxs[7]]
                 f_r = tf.nn.sigmoid(f_r_hat)
-                int_parts["free_gates"] = tf.expand_dims(f_r, 1)
+                intrfc["free_gates"] = tf.expand_dims(f_r, 1)
 
             with tf.variable_scope("alloc_gate"):
                 g_a_hat = interface_vec[:, start_idxs[7]:start_idxs[8]]
                 g_a = tf.nn.sigmoid(g_a_hat)
-                int_parts["alloc_gate"] = g_a
+                intrfc["alloc_gate"] = g_a
 
             if return_alloc_strength:
                 with tf.variable_scope("alloc_strength"):
                     B_a_hat = interface_vec[:, start_idxs[8]:start_idxs[9]]
                     B_a = 1 + tf.nn.softplus(B_a_hat)
-                    int_parts["alloc_strength"] = B_a
+                    intrfc["alloc_strength"] = B_a
+
             with tf.variable_scope("write_gate"):
                 g_w_hat = interface_vec[:, start_idxs[9]:start_idxs[10]]
                 g_w = tf.nn.sigmoid(g_w_hat)
-                int_parts["write_gate"] = g_w
+                intrfc["write_gate"] = g_w
 
             with tf.variable_scope("Read_modes"):
                 pi_hat = interface_vec[:, start_idxs[10]:start_idxs[11]]
-                pi_r_hat = tf.reshape(pi_hat,
-                                      [self.batch_size, 3, self.num_heads])
+                pi_r_hat = tf.reshape(
+                    pi_hat, [self.batch_size, 3, self.num_heads])
                 pi_r = tf.nn.softmax(pi_r_hat)
-                int_parts["read_modes"] = pi_r
+                intrfc["read_modes"] = pi_r
 
-        return int_parts
+        return intrfc
 
     @staticmethod
     def content_lookup(memory, key, strength):
@@ -663,7 +664,7 @@ class Memory:
 
         """
         with tf.variable_scope("Mem_Man"):
-            int_parts = self.interface_partition(
+            intrfc = self.interface_partition(
                 interface_vec, return_alloc_strength=self.softmax_allocation)
             with tf.variable_scope("write_allocation"):
                 with tf.variable_scope("usage"):
@@ -671,12 +672,12 @@ class Memory:
                         prev_state.usage,
                         prev_state.write_weights,
                         prev_state.read_weights,
-                        int_parts["free_gates"])
+                        intrfc["free_gates"])
 
                 with tf.variable_scope("alloc_weights"):
                     if self.softmax_allocation:
                         alloc_weights = self.softmax_allocation_weighting(
-                            usage_vec, int_parts["alloc_strength"])
+                            usage_vec, intrfc["alloc_strength"])
                     else:
                         alloc_weights = self.sorting_allocation_weighting(
                             usage_vec)
@@ -684,21 +685,21 @@ class Memory:
                 with tf.variable_scope("writing_lookup_weights"):
                     write_content_lookup = self.content_lookup(
                         prev_state.mem,
-                        int_parts["write_key"],
-                        int_parts["write_strength"])
+                        intrfc["write_key"],
+                        intrfc["write_strength"])
 
                 with tf.variable_scope("write_weights"):
                     write_weights = self.update_write_weights(
                         alloc_weights,
                         write_content_lookup,
-                        int_parts["alloc_gate"],
-                        int_parts["write_gate"])
+                        intrfc["alloc_gate"],
+                        intrfc["write_gate"])
 
             mem = self.erase_and_write_memory(
                 prev_state.mem,
                 write_weights,
-                int_parts["erase_vec"],
-                int_parts["write_vec"])
+                intrfc["erase_vec"],
+                intrfc["write_vec"])
 
             with tf.variable_scope("read_allocation"):
                 link_mat = self.update_temporal_link(
@@ -711,15 +712,15 @@ class Memory:
                 with tf.variable_scope("reading_lookup_weights"):
                     read_content_lookup = self.content_lookup(
                         prev_state.mem,
-                        int_parts["read_keys"],
-                        int_parts["read_strengths"])
+                        intrfc["read_keys"],
+                        intrfc["read_strengths"])
 
                 with tf.variable_scope("read_weights"):
                     read_weights = self.update_read_weights(
                         prev_state.read_weights,
                         link_mat,
                         read_content_lookup,
-                        int_parts["read_modes"])
+                        intrfc["read_modes"])
 
             read_vecs = self.read_memory(
                 mem,

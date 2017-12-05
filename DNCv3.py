@@ -1,4 +1,4 @@
-r"""Define a differentiable neural computer with alternative allocation.
+r"""Define a differentiable neural computer.
 
 The differentiable neural computer was introduced by Graves, A., et. al. [2016]
 as a neural network model with a dynamic memory modeled after the modern
@@ -11,8 +11,9 @@ from memory import Memory, AccessState
 class DNC(tf.nn.rnn_cell.RNNCell):
     """Create a differentiable neural computer.
 
-    The DNC is a sequence-to-sequence model that is completely
-    differentiable. It features a built-in memory.
+    The DNC is a recursive neural network that is completely
+    differentiable. It features multiple memory vectors (slots), 
+    unlike the LSTM.
 
     Comparing to the paper glossary available at
     https://www.readcube.com/articles/supplement?doi=10.1038%2Fnature20101&index=12&ssl=1&st=acd80c7ede3649cb0f4345bcdc01ec12&preview=1
@@ -32,8 +33,8 @@ class DNC(tf.nn.rnn_cell.RNNCell):
         bit_len (int, 64): Length of a slot in memory.
         num_heads (int, 4): Number of read heads.
         batch_size (int, 1): Length of the batch.
-        softmax_allocation (bool, True): Use the alternative softmax writing
-            allocation or the original formulation.
+        softmax_allocation (bool, True): Use alternative softmax memory
+            allocation for writing or the original formulation.
 
     Attributes:
         output_width (arg, output_size)
@@ -42,11 +43,11 @@ class DNC(tf.nn.rnn_cell.RNNCell):
         num_heads (arg)
         batch_size (arg)
         softmax_allocation (arg)
-        interface_size (``num_heads*bit_len + 3*bit_len + 5*num_heads + 3``):
+        intrfc_len (``num_heads*bit_len + 3*bit_len + 5*num_heads + 3``):
             Size of emitted interface vector.
         nn_input_size (``num_heads*bit_len + input_size``): Size of concatted
             read and input vector.
-        nn_output_size (``output_size + interface_size``): Size of concatted
+        nn_output_size (``output_size + intrfc_len``): Size of concatted
             prediction and interface vector.
         controller (``None``): A user defined callable (function / instance
             with a ``__call__`` method).
@@ -73,25 +74,24 @@ class DNC(tf.nn.rnn_cell.RNNCell):
         self.batch_size = batch_size
         self.softmax_allocation = softmax_allocation
         # size of output from controller for memory interactions
-        self.interface_size = num_heads*bit_len + 3*bit_len + 5*num_heads + 3
+        self.intrfc_len = num_heads*bit_len + 3*bit_len + 5*num_heads + 3
         if softmax_allocation:
-            self.interface_size += 1
+            self.intrfc_len += 1
         # actual sizes after concat
         self.nn_input_size = num_heads * bit_len + input_size
-        self.nn_output_size = output_size + self.interface_size
+        self.nn_output_size = output_size + self.intrfc_len
         self.controller = controller
         self._memory = Memory(
             mem_len, bit_len, num_heads, batch_size, softmax_allocation)
 
-        self._access_shapes = AccessState(
-            mem=tf.TensorShape([mem_len, bit_len]),
-            usage=tf.TensorShape([mem_len]),
-            link=tf.TensorShape([mem_len, mem_len]),
-            precedence=tf.TensorShape([mem_len]),
-            # HEAD VARIABLES
-            read_weights=tf.TensorShape([mem_len, num_heads]),
-            write_weights=tf.TensorShape([mem_len]),
-            read_vecs=tf.TensorShape([num_heads, bit_len]))
+        self.state_shape = AccessState(
+            mem=[batch_size, mem_len, bit_len],
+            usage=[batch_size, mem_len],
+            link=[batch_size, mem_len, mem_len],
+            precedence=[batch_size, mem_len],
+            read_weights=[batch_size, mem_len, num_heads],
+            write_weights=[batch_size, mem_len],
+            read_vecs=[batch_size, num_heads, bit_len])
 
     def zero_state(self):
         """Return the initial state of the DNC in tuple form.
@@ -99,34 +99,31 @@ class DNC(tf.nn.rnn_cell.RNNCell):
         The memory, usage vector, link matrix, and precedence weighting
         are initialized to zeros. The read weights and write weights are
         filled with a small, nonnegative number, ``1e-6``, and the 
-        read vecs are randomly initialized. All are ``tf.Variable`` objects.
+        read vecs are randomly initialized. All are ``tf.Variable`` objects
+        to facilitate statefulness.
         """
         with tf.variable_scope("zero_state"):
             return AccessState(
                 mem=tf.Variable(
-                    tf.zeros([self.batch_size, self.mem_len, self.bit_len]),
+                    tf.zeros(self.state_shape.mem), 
                     trainable=False, name="mem"),
                 usage=tf.Variable(
-                    tf.zeros([self.batch_size, self.mem_len]),
+                    tf.zeros(self.state_shape.usage),
                     trainable=False, name="usage"),
                 link=tf.Variable(
-                    tf.zeros([self.batch_size, self.mem_len, self.mem_len]),
+                    tf.zeros(self.state_shape.link),
                     trainable=False, name="link"),
                 precedence=tf.Variable(
-                    tf.zeros([self.batch_size, self.mem_len]),
+                    tf.zeros(self.state_shape.precedence),
                     trainable=False, name="prec"),
                 read_weights=tf.Variable(
-                    tf.fill([self.batch_size, self.mem_len, self.num_heads],
-                        1e-6, name="read_weights"),
-                    trainable=False, name="w_r"),
+                    tf.fill(self.state_shape.read_weights, 1e-6),
+                    trainable=False, name="read_weights"),
                 write_weights=tf.Variable(
-                    tf.fill([self.batch_size, self.mem_len],
-                        1e-6, name="write_weights"),
-                    trainable=False, name="w_w"),
+                    tf.fill(self.state_shape.write_weights, 1e-6),
+                    trainable=False, name="write_weights"),
                 read_vecs=tf.Variable(
-                    tf.truncated_normal(
-                        [self.batch_size, self.num_heads, self.bit_len],
-                        stddev=0.1, name="read_vec"),
+                    tf.truncated_normal(self.state_shape.read_vecs, 0.1),
                     trainable=False, name="read_vecs"))
 
     @property
@@ -148,7 +145,8 @@ class DNC(tf.nn.rnn_cell.RNNCell):
         
         This is a required property to use the DNC as an RNN in TensorFlow.
         """
-        return self._access_shapes
+        return AccessState._make(
+            [tf.TensorShape(shape[1:]) for shape in self.state_shape])
 
     def install_controller(self, controller):
         r"""Determine the controller for the DNC.
@@ -156,7 +154,7 @@ class DNC(tf.nn.rnn_cell.RNNCell):
         The input is expected to be a callable that maps from size
         ``1 x nn_input_size`` to size ``1 x nn_output_size.`` Recall
         that ``nn_input_size = input_size + num_heads*bit_len`` and
-        that ``nn_output_size = output_size + interface_size.`` Note that
+        that ``nn_output_size = output_size + intrfc_len.`` Note that
         the controller object is `not` responsible for emitting seperate
         prediction and interface vectors.
 
@@ -185,9 +183,9 @@ class DNC(tf.nn.rnn_cell.RNNCell):
         the controller by the output weights :math:`W^y_t` and then
         again by the interface weights :math:`W^\zeta_t`. In other words,
         the DNC converts the ``1 x nn_output_size =
-        1 x output_size + interface_size`` vector to one prediction of length
+        1 x output_size + intrfc_len`` vector to one prediction of length
         ``output_size`` and another interface vector of length
-        ``interface_size``.
+        ``intrfc_len``.
 
         Args:
             controller: A callable to predict outputs and select
@@ -237,7 +235,7 @@ class DNC(tf.nn.rnn_cell.RNNCell):
             The predicted mapping for `x_t', a tensor of shape
                 [batch_size, output_size].
             The memory interface values, a tensor of shape
-                [batch_size, interface_size].
+                [batch_size, intrfc_len].
 
         """
         with tf.variable_scope("x_r_cat"):
@@ -260,7 +258,7 @@ class DNC(tf.nn.rnn_cell.RNNCell):
             # Zeta_t = W^Z * a^y
             interface_weights = tf.get_variable(
                 "interface_weights",
-                shape=[self.nn_output_size, self.interface_size],
+                shape=[self.nn_output_size, self.intrfc_len],
                 initializer=tf.truncated_normal_initializer(stddev=0.1))
             interface_vec = tf.matmul(l2_act, interface_weights)
         return nn_out, interface_vec
