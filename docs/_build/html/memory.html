@@ -207,7 +207,7 @@
 
 <dl class="class">
 <dt id="memory.Memory">
-<em class="property">class </em><code class="descclassname">memory.</code><code class="descname">Memory</code><span class="sig-paren">(</span><em>mem_len</em>, <em>bit_len</em>, <em>num_heads</em>, <em>batch_size</em>, <em>softmax_allocation</em><span class="sig-paren">)</span><a class="headerlink" href="#memory.Memory" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">memory.</code><code class="descname">Memory</code><span class="sig-paren">(</span><em>mem_len</em>, <em>bit_len</em>, <em>n_read_heads</em>, <em>n_write_heads</em>, <em>batch_size</em>, <em>softmax_allocation</em><span class="sig-paren">)</span><a class="headerlink" href="#memory.Memory" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
 <p>Implement the memory module of the differentiable neural computer.</p>
 <p>The interaction is as follows</p>
@@ -265,11 +265,12 @@ all the columns.</li>
 <blockquote>
 <div><ul class="simple">
 <li>The temporal link matrix retains the writing order. An entry
-<code class="docutils literal"><span class="pre">[i,</span> <span class="pre">j]</span></code> encodes “the degree to which location <cite>i</cite> … is
-written to after location <cite>j</cite>.” Each row and column of L defines
-a probability distribution over the locations, with nulls.</li>
+<code class="docutils literal"><span class="pre">[h,</span> <span class="pre">i,</span> <span class="pre">j]</span></code> encodes “the degree to which location <cite>i</cite> … is
+written to after location <cite>j</cite>” by head <cite>h</cite>. Each row and column
+of L defines a probability distribution over the locations,
+with nulls.</li>
 <li>Precedence: Each element represents how close that location
-was to the most recent writing. If precedence is high,
+was to the most recent writing, per head. If precedence is high,
 the memory location has changed a lot recently.</li>
 <li>The following happens for each read head</li>
 <li>Forward/Backward weighting: Redistribute the previous read
@@ -295,6 +296,28 @@ factored in highest in the head’s read vector.)</p>
 <li>Read memory. Multiply the memory by the read weights for each head
 to give the read (past tense) vectors.</li>
 </ul>
+<dl class="method">
+<dt id="memory.Memory.alloc_update">
+<code class="descname">alloc_update</code><span class="sig-paren">(</span><em>usage</em>, <em>write_gates</em>, <em>alloc_strength=None</em>, <em>softmax=None</em><span class="sig-paren">)</span><a class="headerlink" href="#memory.Memory.alloc_update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Allocate memory locations for each write head.</p>
+<p>After every allocation, update the dummy usage vector.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>usage</strong> – A tensor of shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span></code>.</li>
+<li><strong>write_gates</strong> – A tensor of shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">1</span> <span class="pre">x</span> <span class="pre">n_write_heads</span></code>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A tensor of shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">n_write_heads</span></code>.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 <dl class="staticmethod">
 <dt id="memory.Memory.content_lookup">
 <em class="property">static </em><code class="descname">content_lookup</code><span class="sig-paren">(</span><em>memory</em>, <em>key</em>, <em>strength</em><span class="sig-paren">)</span><a class="headerlink" href="#memory.Memory.content_lookup" title="Permalink to this definition">¶</a></dt>
@@ -314,8 +337,8 @@ C(M, k, \beta)[i] &amp;= \frac{exp(D(k,M[i,\cdot]) \beta)} {\sum_j(exp(D(k,M[j,\
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>memory</strong> – The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">bit_len</span></code> memory matrix.</li>
-<li><strong>key</strong> – The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">bit_len</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> key vector.</li>
-<li><strong>strength</strong> – The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">1</span> <span class="pre">x</span> <span class="pre">num_keys</span></code> strength vector.</li>
+<li><strong>key</strong> – The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">num_heads</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> key vector.</li>
+<li><strong>strength</strong> – The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">1</span> <span class="pre">x</span> <span class="pre">num_heads</span></code> strength vector.</li>
 </ul>
 </td>
 </tr>
@@ -345,13 +368,13 @@ Also, <span class="math">\([[1]]\)</span> denotes a matrix of ones.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>old_memory</strong> – A matrix of size <code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">bit_len</span></code>.</li>
+<li><strong>old_memory</strong> – A matrix of size <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">bit_len</span></code>.</li>
 <li><strong>write_weights</strong> – The computed write weighting corner-vector of size
-<code class="docutils literal"><span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">1</span></code>.</li>
+<code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">n_write_heads</span></code>.</li>
 <li><strong>erase_vec</strong> – The emitted erase vector of size
-<code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">1</span> <span class="pre">x</span> <span class="pre">bit_len</span></code>.</li>
+<code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">n_write_heads</span> <span class="pre">x</span> <span class="pre">bit_len</span></code>.</li>
 <li><strong>write_vec</strong> – The emitted write vector of size
-<code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">1</span> <span class="pre">x</span> <span class="pre">bit_len</span></code>.</li>
+<code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">n_write_heads</span> <span class="pre">x</span> <span class="pre">bit_len</span></code>.</li>
 </ul>
 </td>
 </tr>
@@ -366,29 +389,31 @@ Also, <span class="math">\([[1]]\)</span> denotes a matrix of ones.</p>
 <dt id="memory.Memory.interface_partition">
 <code class="descname">interface_partition</code><span class="sig-paren">(</span><em>interface_vec</em>, <em>return_alloc_strength=None</em><span class="sig-paren">)</span><a class="headerlink" href="#memory.Memory.interface_partition" title="Permalink to this definition">¶</a></dt>
 <dd><p>Partition the interface vector into the memory controls.</p>
-<p>We use a strided slicing approach. This allows for eventual
-extensibility to batches, as well as nice graph visualization.
-After partitioning, the controls are possibly reshaped and ran
+<p>After partitioning, the controls are possibly reshaped and ran
 through activation functions to preserve their domain.</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span>                 <span class="n">VARIABLE</span> <span class="n">REFERENCE</span>
  <span class="n">Key</span>             <span class="n">Math</span>       <span class="n">Shape</span><span class="o">*</span>      <span class="n">Domain</span>
 <span class="o">------------------------------------------------------</span>
- <span class="n">read_keys</span><span class="o">**</span>     <span class="n">k</span><span class="o">^</span><span class="n">r_t</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>   <span class="n">B</span> <span class="n">x</span> <span class="n">R</span> <span class="n">x</span> <span class="n">W</span>   <span class="n">R</span>
- <span class="n">read_strengths</span>  <span class="n">B</span><span class="o">^</span><span class="n">r_t</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>   <span class="n">B</span> <span class="n">x</span> <span class="mi">1</span> <span class="n">x</span> <span class="n">R</span>   <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">inf</span><span class="p">)</span>
- <span class="n">write_key</span><span class="o">**</span>     <span class="n">k</span><span class="o">^</span><span class="n">w_t</span>      <span class="n">B</span> <span class="n">x</span> <span class="mi">1</span> <span class="n">x</span> <span class="n">W</span>   <span class="n">R</span>
- <span class="n">write_strength</span>  <span class="n">B</span><span class="o">^</span><span class="n">w_t</span>      <span class="n">B</span> <span class="n">x</span> <span class="mi">1</span> <span class="n">x</span> <span class="mi">1</span>   <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">inf</span><span class="p">)</span>
- <span class="n">erase_vec</span>       <span class="n">e_t</span>        <span class="n">B</span> <span class="n">x</span> <span class="mi">1</span> <span class="n">x</span> <span class="n">W</span>   <span class="p">[</span><span class="mi">0</span> <span class="mi">1</span><span class="p">]</span>
- <span class="n">write_vec</span>       <span class="n">v_t</span>        <span class="n">B</span> <span class="n">x</span> <span class="mi">1</span> <span class="n">x</span> <span class="n">W</span>   <span class="n">R</span>
- <span class="n">free_gates</span>      <span class="n">f_t</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>     <span class="n">B</span> <span class="n">x</span> <span class="mi">1</span> <span class="n">x</span> <span class="n">R</span>   <span class="p">[</span><span class="mi">0</span> <span class="mi">1</span><span class="p">]</span>
- <span class="n">alloc_gate</span>      <span class="n">g</span><span class="o">^</span><span class="n">a_t</span>      <span class="n">B</span> <span class="n">x</span> <span class="mi">1</span>       <span class="p">[</span><span class="mi">0</span> <span class="mi">1</span><span class="p">]</span>
+ <span class="n">read_keys</span><span class="o">**</span>     <span class="n">k</span><span class="o">^</span><span class="n">r_t</span>      <span class="n">B</span> <span class="n">x</span> <span class="n">W</span> <span class="n">x</span> <span class="n">R</span>   <span class="n">R</span>
+ <span class="n">read_strengths</span>  <span class="n">B</span><span class="o">^</span><span class="n">r_t</span>      <span class="n">B</span> <span class="n">x</span> <span class="mi">1</span> <span class="n">x</span> <span class="n">R</span>   <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">inf</span><span class="p">)</span>
+ <span class="n">write_key</span><span class="o">**</span>     <span class="n">k</span><span class="o">^</span><span class="n">w</span><span class="p">,</span><span class="n">h_t</span>    <span class="n">B</span> <span class="n">x</span> <span class="n">W</span> <span class="n">x</span> <span class="n">H</span>   <span class="n">R</span>
+ <span class="n">write_strength</span>  <span class="n">B</span><span class="o">^</span><span class="n">w</span><span class="p">,</span><span class="n">h_t</span>    <span class="n">B</span> <span class="n">x</span> <span class="mi">1</span> <span class="n">x</span> <span class="n">H</span>   <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">inf</span><span class="p">)</span>
+ <span class="n">erase_vec</span>       <span class="n">e_t</span>        <span class="n">B</span> <span class="n">x</span> <span class="n">H</span> <span class="n">x</span> <span class="n">W</span>   <span class="p">[</span><span class="mi">0</span> <span class="mi">1</span><span class="p">]</span>
+ <span class="n">write_vec</span>       <span class="n">v_t</span>        <span class="n">B</span> <span class="n">x</span> <span class="n">H</span> <span class="n">x</span> <span class="n">W</span>   <span class="n">R</span>
+ <span class="n">free_gates</span>      <span class="n">f</span><span class="o">^</span><span class="n">r_t</span>      <span class="n">B</span> <span class="n">x</span> <span class="mi">1</span> <span class="n">x</span> <span class="n">R</span>   <span class="p">[</span><span class="mi">0</span> <span class="mi">1</span><span class="p">]</span>
+ <span class="n">alloc_gate</span>      <span class="n">g</span><span class="o">^</span><span class="n">a</span><span class="p">,</span><span class="n">h_t</span>    <span class="n">B</span> <span class="n">x</span> <span class="mi">1</span> <span class="n">x</span> <span class="n">H</span>   <span class="p">[</span><span class="mi">0</span> <span class="mi">1</span><span class="p">]</span>
 <span class="p">[</span><span class="n">alloc_strength</span><span class="o">+</span> <span class="n">B</span><span class="o">^</span><span class="n">a_t</span>      <span class="n">B</span> <span class="n">x</span> <span class="mi">1</span>       <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">inf</span><span class="p">)</span> <span class="p">]</span>
- <span class="n">write_gate</span>      <span class="n">g</span><span class="o">^</span><span class="n">w_t</span>      <span class="n">B</span> <span class="n">x</span> <span class="mi">1</span>       <span class="p">[</span><span class="mi">0</span> <span class="mi">1</span><span class="p">]</span>
- <span class="n">read_modes</span>      <span class="n">pi_t</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>    <span class="n">B</span> <span class="n">x</span> <span class="mi">3</span> <span class="n">x</span> <span class="n">R</span>   <span class="n">SOFTMAX</span> <span class="n">SIMPLEX</span>
+ <span class="n">write_gate</span>      <span class="n">g</span><span class="o">^</span><span class="n">w</span><span class="p">,</span><span class="n">h_t</span>    <span class="n">B</span> <span class="n">x</span> <span class="mi">1</span> <span class="n">x</span> <span class="n">H</span>   <span class="p">[</span><span class="mi">0</span> <span class="mi">1</span><span class="p">]</span>
+ <span class="n">read_modes</span>      <span class="n">pi</span><span class="o">^</span><span class="n">r_t</span>                 <span class="n">SIMPLEX</span> <span class="ow">in</span> <span class="n">R</span> <span class="n">dim</span>
+   <span class="n">forward</span>     <span class="n">pi</span><span class="o">^</span><span class="n">r_t</span><span class="p">[:</span><span class="n">H</span><span class="p">]</span>   <span class="n">B</span> <span class="n">x</span> <span class="n">H</span> <span class="n">x</span> <span class="n">R</span>
+   <span class="n">backward</span>    <span class="n">pi</span><span class="o">^</span><span class="n">r_t</span><span class="p">[</span><span class="n">H</span><span class="p">:</span><span class="mi">2</span><span class="n">H</span><span class="p">]</span> <span class="n">B</span> <span class="n">x</span> <span class="n">H</span> <span class="n">x</span> <span class="n">R</span>
+   <span class="n">content</span>     <span class="n">pi</span><span class="o">^</span><span class="n">r_t</span><span class="p">[</span><span class="n">H</span><span class="p">]</span>    <span class="n">B</span> <span class="n">x</span> <span class="mi">1</span> <span class="n">x</span> <span class="n">R</span>
 </pre></div>
 </div>
-<p><a href="#id1"><span class="problematic" id="id2">*</span></a>B stands for <code class="docutils literal"><span class="pre">batch_size</span></code>, R for <code class="docutils literal"><span class="pre">num_heads</span></code>, and W
-for <code class="docutils literal"><span class="pre">bit_len</span></code> (consistent with paper). Index <code class="docutils literal"><span class="pre">[i]</span></code> corresponds to
-dimension with size R.</p>
+<p><a href="#id1"><span class="problematic" id="id2">*</span></a>B stands for <code class="docutils literal"><span class="pre">batch_size</span></code>, R for <code class="docutils literal"><span class="pre">n_read_heads</span></code>, and W
+for <code class="docutils literal"><span class="pre">bit_len</span></code> (consistent with paper). We use H for
+<code class="docutils literal"><span class="pre">n_write_heads</span></code>. Index <code class="docutils literal"><span class="pre">[i]</span></code> corresponds to dimension with size
+R, index <code class="docutils literal"><span class="pre">[j]</span></code> corresponds to dimension with size H.</p>
 <p>+Only emitted when <code class="docutils literal"><span class="pre">softmax_allocation</span></code> is true.</p>
 <p><a href="#id3"><span class="problematic" id="id4">**</span></a>In the paper, keys are shaped W x _.</p>
 <p>The variable reference table is provided to clarify the
@@ -421,21 +446,21 @@ keys for the return dict.</td>
 <li><strong>memory_matrix</strong> – The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">bit_len</span></code> memory
 matrix.</li>
 <li><strong>read_weights</strong> – A tensor of corner-vectors for each read head,
-with shape <code class="docutils literal"><span class="pre">num_heads</span> <span class="pre">x</span> <span class="pre">mem_len</span></code>.</li>
+with shape <code class="docutils literal"><span class="pre">n_read_heads</span> <span class="pre">x</span> <span class="pre">mem_len</span></code>.</li>
 </ul>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The read (past tense) real-valued vectors for each read head; a
-tensor of shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">num_heads</span> <span class="pre">x</span> <span class="pre">bit_len</span></code>.</p>
+tensor of shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">n_read_heads</span> <span class="pre">x</span> <span class="pre">bit_len</span></code>.</p>
 </td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
 
-<dl class="staticmethod">
+<dl class="method">
 <dt id="memory.Memory.softmax_allocation_weighting">
-<em class="property">static </em><code class="descname">softmax_allocation_weighting</code><span class="sig-paren">(</span><em>usage_vec</em>, <em>alloc_strength</em><span class="sig-paren">)</span><a class="headerlink" href="#memory.Memory.softmax_allocation_weighting" title="Permalink to this definition">¶</a></dt>
+<code class="descname">softmax_allocation_weighting</code><span class="sig-paren">(</span><em>usage_vec</em>, <em>head_alloc_strength</em><span class="sig-paren">)</span><a class="headerlink" href="#memory.Memory.softmax_allocation_weighting" title="Permalink to this definition">¶</a></dt>
 <dd><p>Retrieve the writing allocation weight.</p>
 <p>The ‘usage’ is a number between 0 and 1. The <cite>nonusage</cite> is
 then computed by subtracting 1 from usage. Afterwards, we
@@ -458,7 +483,7 @@ may be due to numerical error or may be a result of the softmax.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>usage_vec</strong> – The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> corner-vector.</li>
 <li><strong>alloc_strength</strong> – A learned parameter from the interface of
-shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">1</span></code> in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1]</span></code>.</li>
+shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">1</span> <span class="pre">x</span> <span class="pre">n_write_heads</span></code> in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1]</span></code>.</li>
 </ul>
 </td>
 </tr>
@@ -505,7 +530,7 @@ entries of <code class="docutils literal"><span class="pre">sorted_alloc</span><
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>usage_vec</strong> – The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> vector.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Calculated allocation weights.</td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Calculated allocation weights of shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span></code>.</td>
 </tr>
 </tbody>
 </table>
@@ -524,8 +549,10 @@ entries of <code class="docutils literal"><span class="pre">sorted_alloc</span><
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>prev_precedence</strong> – The old <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> corner-vector.</li>
-<li><strong>write_weights</strong> – The current <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> corner-vector.</li>
+<li><strong>prev_precedence</strong> – The old <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">n_write_heads</span></code>
+corner-vector.</li>
+<li><strong>write_weights</strong> – The current <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">n_write_heads</span></code>
+corner-vector.</li>
 </ul>
 </td>
 </tr>
@@ -536,9 +563,9 @@ entries of <code class="docutils literal"><span class="pre">sorted_alloc</span><
 </table>
 </dd></dl>
 
-<dl class="staticmethod">
+<dl class="method">
 <dt id="memory.Memory.update_read_weights">
-<em class="property">static </em><code class="descname">update_read_weights</code><span class="sig-paren">(</span><em>prev_read_weights</em>, <em>link_mat</em>, <em>read_content_lookup</em>, <em>read_modes</em><span class="sig-paren">)</span><a class="headerlink" href="#memory.Memory.update_read_weights" title="Permalink to this definition">¶</a></dt>
+<code class="descname">update_read_weights</code><span class="sig-paren">(</span><em>prev_read_weights</em>, <em>link_mat</em>, <em>read_content_lookup</em>, <em>read_modes</em><span class="sig-paren">)</span><a class="headerlink" href="#memory.Memory.update_read_weights" title="Permalink to this definition">¶</a></dt>
 <dd><p>Update the read weights.</p>
 <p>Comparing to the paper, we have</p>
 <div class="math">
@@ -555,13 +582,14 @@ c^{r,i}_t &amp;= C(M_t, k^{r,i}_t, \beta^{r,i}_t). \\\end{split}\]</div>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>prev_read_weights</strong> – The old tensor of corner-vectors for each read
-head, with shape of <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">num_heads</span></code>.</li>
-<li><strong>link_mat</strong> – The current <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> temporal
+head, with shape of <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">n_read_heads</span></code>.</li>
+<li><strong>link_mat</strong> – The current
+<code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">n_write_heads</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> temporal
 link matrix.</li>
 <li><strong>read_content_lookup</strong> – A tensor of corner-vectors for each read head,
-with shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">num_heads</span></code>.</li>
+with shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">n_read_heads</span></code>.</li>
 <li><strong>read_modes</strong> – A tensor of unit vectors for each read head, having
-shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">3</span> <span class="pre">x</span> <span class="pre">num_heads</span></code>.</li>
+shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">2*n_write_heads</span> <span class="pre">+</span> <span class="pre">1</span> <span class="pre">x</span> <span class="pre">n_read_heads</span></code>.</li>
 </ul>
 </td>
 </tr>
@@ -605,12 +633,13 @@ eliminate self-links in the temporal link matrix.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>prev_link_mat</strong> – The old <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">mem_len</span></code>
-temporal link matrix.</li>
-<li><strong>write_weights</strong> – The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> write weighting
-corner-vector.</li>
-<li><strong>prev_precedence</strong> – The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> precedence
-corner-vector.</li>
+<li><strong>prev_link_mat</strong> – The old
+<code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">n_write_heads</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">mem_len</span></code> temporal
+link matrix.</li>
+<li><strong>write_weights</strong> – The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">n_write_heads</span></code>
+write weighting corner-vector.</li>
+<li><strong>prev_precedence</strong> – The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">n_write_heads</span></code>
+precedence corner-vector.</li>
 </ul>
 </td>
 </tr>
@@ -637,19 +666,20 @@ write gate, <span class="math">\((1 - g^a_t)\)</span> is the “unallocation gat
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>alloc_weights</strong> – The tensor of size <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span></code>.</li>
+<li><strong>alloc_weights</strong> – The tensor of size
+<code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">n_write_heads</span></code>.</li>
 <li><strong>write_content_lookup</strong> – A unit vector of size
-<code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">1</span></code>.</li>
-<li><strong>write_gate</strong> – A scalar in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1]</span></code> for each batch entry having
-shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">1</span></code>.</li>
-<li><strong>alloc_gate</strong> – A scalar in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1]</span></code> for each batch entry having
-shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">1</span></code>.</li>
+<code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">n_write_heads</span></code>.</li>
+<li><strong>write_gate</strong> – A tensor with elements in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1]</span></code> having shape
+<code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">1</span> <span class="pre">x</span> <span class="pre">n_write_heads</span></code>.</li>
+<li><strong>alloc_gate</strong> – A tensor with elements in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1]</span></code> having shape
+<code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">1</span> <span class="pre">x</span> <span class="pre">n_write_heads</span></code>.</li>
 </ul>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><dl class="docutils">
-<dt>The new write weights, a corner-vector of size</dt>
-<dd><p class="first last"><code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span></code>.</p>
+<dt>The new write weights, a corner-vector (in last dim) of size</dt>
+<dd><p class="first last"><code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">n_write_heads</span></code>.</p>
 </dd>
 </dl>
 </p>
@@ -669,7 +699,7 @@ shape <code class="docutils literal"><span class="pre">batch_size</span> <span c
 <p>such that</p>
 <div class="math">
 \[\psi_t = \prod_{i=1}^R (1-f^i_t w^{r,i}_{t-1}).\]</div>
-<p>Notice that <span class="math">\(f^i_t\)</span> is the ith of <code class="docutils literal"><span class="pre">num_heads</span></code> free gates
+<p>Notice that <span class="math">\(f^i_t\)</span> is the ith of <code class="docutils literal"><span class="pre">n_read_heads</span></code> free gates
 emitted by the controller. Each free gate is in <code class="docutils literal"><span class="pre">[0,1]</span></code>. And,
 <span class="math">\(w^w_{t-1}\)</span> is the old computed write weight vector. Finally,
 <span class="math">\(w^{r,i}_{t-1}\)</span> is the old computed read weight.</p>
@@ -681,10 +711,10 @@ emitted by the controller. Each free gate is in <code class="docutils literal"><
 <li><strong>prev_usage_vec</strong> – A real valued usage vector of shape
 <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span></code>.</li>
 <li><strong>write_weights</strong> – A corner-vector (weaker all-positive unit vector)
-of shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span></code>.</li>
+of shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">n_write_heads</span></code>.</li>
 <li><strong>read_weights</strong> – A tensor of corner vectors for each read head having
-shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">num_heads</span></code>.</li>
-<li><strong>free_gates</strong> – A vector of shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">1</span> <span class="pre">x</span> <span class="pre">num_heads</span></code>
+shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">mem_len</span> <span class="pre">x</span> <span class="pre">n_read_heads</span></code>.</li>
+<li><strong>free_gates</strong> – A vector of shape <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">1</span> <span class="pre">x</span> <span class="pre">n_read_heads</span></code>
 with each element in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1]</span></code>.</li>
 </ul>
 </td>

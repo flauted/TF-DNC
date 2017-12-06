@@ -21,7 +21,7 @@ class DNC(tf.nn.rnn_cell.RNNCell):
 
         W <=> bit_len (memory word size)
         N <=> mem_len (number of memory locations)
-        R <=> num_heads (number of read heads)
+        R <=> n_read_heads (number of read heads)
 
     Args:
         input_size (int): Size of a row of input to ``run`` method.
@@ -31,7 +31,7 @@ class DNC(tf.nn.rnn_cell.RNNCell):
     Keyword Args:
         mem_len (int, 256): Number of slots in memory.
         bit_len (int, 64): Length of a slot in memory.
-        num_heads (int, 4): Number of read heads.
+        n_read_heads (int, 4): Number of read heads.
         batch_size (int, 1): Length of the batch.
         softmax_allocation (bool, True): Use alternative softmax memory
             allocation for writing or the original formulation.
@@ -40,12 +40,12 @@ class DNC(tf.nn.rnn_cell.RNNCell):
         output_width (arg, output_size)
         mem_len (arg)
         bit_len (arg)
-        num_heads (arg)
+        n_read_heads (arg)
         batch_size (arg)
         softmax_allocation (arg)
-        intrfc_len (``num_heads*bit_len + 3*bit_len + 5*num_heads + 3``):
+        intrfc_len (``n_read_heads*bit_len + 3*bit_len + 5*n_read_heads + 3``):
             Size of emitted interface vector.
-        nn_input_size (``num_heads*bit_len + input_size``): Size of concatted
+        nn_input_size (``n_read_heads*bit_len + input_size``): Size of concatted
             read and input vector.
         nn_output_size (``output_size + intrfc_len``): Size of concatted
             prediction and interface vector.
@@ -64,34 +64,46 @@ class DNC(tf.nn.rnn_cell.RNNCell):
                  controller=None,
                  mem_len=256,
                  bit_len=64,
-                 num_heads=4,
+                 n_read_heads=4,
+                 n_write_heads=2,
                  batch_size=1,
                  softmax_allocation=True):
         self.output_width = output_size
         self.mem_len = mem_len
         self.bit_len = bit_len
-        self.num_heads = num_heads
+        self.n_read_heads = n_read_heads
+        self.n_write_heads = n_write_heads
         self.batch_size = batch_size
         self.softmax_allocation = softmax_allocation
         # size of output from controller for memory interactions
-        self.intrfc_len = num_heads*bit_len + 3*bit_len + 5*num_heads + 3
+        self.intrfc_len = (n_read_heads*bit_len +
+                           n_read_heads +
+                           n_write_heads*bit_len +
+                           n_write_heads +
+                           bit_len*n_write_heads +
+                           bit_len*n_write_heads +
+                           n_read_heads +
+                           n_write_heads +
+                           n_write_heads +
+                           n_read_heads * (n_write_heads*2 + 1))
         if softmax_allocation:
-            self.intrfc_len += 1
+            self.intrfc_len += n_write_heads
         # actual sizes after concat
-        self.nn_input_size = num_heads * bit_len + input_size
+        self.nn_input_size = n_read_heads * bit_len + input_size
         self.nn_output_size = output_size + self.intrfc_len
         self.controller = controller
         self._memory = Memory(
-            mem_len, bit_len, num_heads, batch_size, softmax_allocation)
+            mem_len, bit_len, n_read_heads, 
+            n_write_heads, batch_size, softmax_allocation)
 
         self.state_shape = AccessState(
             mem=[batch_size, mem_len, bit_len],
             usage=[batch_size, mem_len],
-            link=[batch_size, mem_len, mem_len],
-            precedence=[batch_size, mem_len],
-            read_weights=[batch_size, mem_len, num_heads],
-            write_weights=[batch_size, mem_len],
-            read_vecs=[batch_size, num_heads, bit_len])
+            link=[batch_size, n_write_heads, mem_len, mem_len],
+            precedence=[batch_size, mem_len, n_write_heads],
+            read_weights=[batch_size, mem_len, n_read_heads],
+            write_weights=[batch_size, mem_len, n_write_heads],
+            read_vecs=[batch_size, n_read_heads, bit_len])
 
     def zero_state(self):
         """Return the initial state of the DNC in tuple form.
@@ -153,7 +165,7 @@ class DNC(tf.nn.rnn_cell.RNNCell):
 
         The input is expected to be a callable that maps from size
         ``1 x nn_input_size`` to size ``1 x nn_output_size.`` Recall
-        that ``nn_input_size = input_size + num_heads*bit_len`` and
+        that ``nn_input_size = input_size + n_read_heads*bit_len`` and
         that ``nn_output_size = output_size + intrfc_len.`` Note that
         the controller object is `not` responsible for emitting seperate
         prediction and interface vectors.
@@ -204,7 +216,7 @@ class DNC(tf.nn.rnn_cell.RNNCell):
 
             In this case, ``controller`` `must` have a __call__ method
             taking only one argument: the input to the DNC at that timestep
-            concatenated with the ``num_heads`` read vectors.
+            concatenated with the ``n_read_heads`` read vectors.
 
             Or, we may use a function::
 
@@ -229,8 +241,8 @@ class DNC(tf.nn.rnn_cell.RNNCell):
             x ([batch_size, input_size]): The seq sample at the current
                 timestep.
             read_vecs: Vectors interpreted from memory. Must be
-                reshapable to [batch_size, num_heads*bit_len]. (From the paper,
-                `read_vecs` would be [num_heads, bit_len].)
+                reshapable to [batch_size, n_read_heads*bit_len]. (From the paper,
+                `read_vecs` would be [n_read_heads, bit_len].)
         Returns:
             The predicted mapping for `x_t', a tensor of shape
                 [batch_size, output_size].
@@ -241,7 +253,7 @@ class DNC(tf.nn.rnn_cell.RNNCell):
         with tf.variable_scope("x_r_cat"):
             # [x_t; r_{t-1}]
             reshape_read_vecs = tf.reshape(
-                read_vecs, [self.batch_size, self.num_heads*self.bit_len])
+                read_vecs, [self.batch_size, self.n_read_heads*self.bit_len])
             inputs = tf.concat([x, reshape_read_vecs], 1)
 
         l2_act = self.controller(inputs)
@@ -269,7 +281,7 @@ class DNC(tf.nn.rnn_cell.RNNCell):
         Args:
             nn_out: The ``batch_size x output_size`` prediction from
                 the controller.
-            read_vecs: The ``batch_size x bit_len x num_heads`` output from
+            read_vecs: The ``batch_size x bit_len x n_read_heads`` output from
                 memory interaction.
                 
         Returns:
@@ -279,11 +291,11 @@ class DNC(tf.nn.rnn_cell.RNNCell):
         with tf.variable_scope("y_t"):
             read_vecs_out_weight = tf.get_variable(
                 "readout_weights",
-                shape=[self.num_heads*self.bit_len, self.output_width],
+                shape=[self.n_read_heads*self.bit_len, self.output_width],
                 initializer=tf.truncated_normal_initializer(stddev=0.1))
             reshape_read_vecs = tf.reshape(
                 read_vecs,
-                [self.batch_size, self.num_heads*self.bit_len],
+                [self.batch_size, self.n_read_heads*self.bit_len],
                 name="Reshape_r_t")
             interpreted_read_vecs = tf.matmul(
                 reshape_read_vecs, read_vecs_out_weight, name="weighted_read")

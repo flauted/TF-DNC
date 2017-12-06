@@ -89,10 +89,11 @@ def run_training(seq_len=6,
                  iterations=50000,
                  mem_len=15,
                  bit_len=10,
-                 num_read_heads=1,
-                 batch_size=1,
+                 num_read_heads=2,
+                 num_write_heads=3,
+                 batch_size=7,
                  softmax_alloc=False,
-                 stateful=True,
+                 stateful=False,
                  tb_dir="tb/dnc"):
     """Run training loop."""
     graph = tf.Graph()
@@ -111,7 +112,8 @@ def run_training(seq_len=6,
                 seq_len=seq_len,
                 mem_len=mem_len,
                 bit_len=bit_len,
-                num_heads=num_read_heads,
+                n_read_heads=num_read_heads,
+                n_write_heads=num_write_heads,
                 batch_size=batch_size,
                 softmax_allocation=softmax_alloc)
             dnc.install_controller(

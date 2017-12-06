@@ -166,6 +166,7 @@ def run_training(seq_len=3,
                  mem_len=12,
                  bit_len=1024,
                  num_read_heads=4,
+                 num_write_heads=1,
                  batch_size=50,
                  softmax_alloc=True,
                  stateful=True,
@@ -189,7 +190,8 @@ def run_training(seq_len=3,
                 mem_len=mem_len,
                 bit_len=bit_len,
                 batch_size=batch_size,
-                num_heads=num_read_heads,
+                n_read_heads=num_read_heads,
+                n_write_heads=num_write_heads,
                 softmax_allocation=softmax_alloc)
             dnc.install_controller(
                 ConvModel(

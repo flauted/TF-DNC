@@ -162,7 +162,7 @@ as a neural network model with a dynamic memory modeled after the modern
 CPU and RAM setup.</p>
 <dl class="class">
 <dt id="DNCv3.DNC">
-<em class="property">class </em><code class="descclassname">DNCv3.</code><code class="descname">DNC</code><span class="sig-paren">(</span><em>input_size</em>, <em>output_size</em>, <em>seq_len</em>, <em>controller=None</em>, <em>mem_len=256</em>, <em>bit_len=64</em>, <em>num_heads=4</em>, <em>batch_size=1</em>, <em>softmax_allocation=True</em><span class="sig-paren">)</span><a class="headerlink" href="#DNCv3.DNC" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">DNCv3.</code><code class="descname">DNC</code><span class="sig-paren">(</span><em>input_size</em>, <em>output_size</em>, <em>seq_len</em>, <em>controller=None</em>, <em>mem_len=256</em>, <em>bit_len=64</em>, <em>n_read_heads=4</em>, <em>n_write_heads=2</em>, <em>batch_size=1</em>, <em>softmax_allocation=True</em><span class="sig-paren">)</span><a class="headerlink" href="#DNCv3.DNC" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">tensorflow.python.ops.rnn_cell_impl.RNNCell</span></code></p>
 <p>Create a differentiable neural computer.</p>
 <p>The DNC is a recursive neural network that is completely
@@ -173,7 +173,7 @@ unlike the LSTM.</p>
 we have</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">W</span> <span class="o">&lt;=&gt;</span> <span class="n">bit_len</span> <span class="p">(</span><span class="n">memory</span> <span class="n">word</span> <span class="n">size</span><span class="p">)</span>
 <span class="n">N</span> <span class="o">&lt;=&gt;</span> <span class="n">mem_len</span> <span class="p">(</span><span class="n">number</span> <span class="n">of</span> <span class="n">memory</span> <span class="n">locations</span><span class="p">)</span>
-<span class="n">R</span> <span class="o">&lt;=&gt;</span> <span class="n">num_heads</span> <span class="p">(</span><span class="n">number</span> <span class="n">of</span> <span class="n">read</span> <span class="n">heads</span><span class="p">)</span>
+<span class="n">R</span> <span class="o">&lt;=&gt;</span> <span class="n">n_read_heads</span> <span class="p">(</span><span class="n">number</span> <span class="n">of</span> <span class="n">read</span> <span class="n">heads</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -191,7 +191,7 @@ we have</p>
 <tr class="field-even field"><td>&#160;</td><td class="field-body"><ul class="first last simple">
 <li><strong>mem_len</strong> (<em>int</em><em>, </em><em>256</em>) – Number of slots in memory.</li>
 <li><strong>bit_len</strong> (<em>int</em><em>, </em><em>64</em>) – Length of a slot in memory.</li>
-<li><strong>num_heads</strong> (<em>int</em><em>, </em><em>4</em>) – Number of read heads.</li>
+<li><strong>n_read_heads</strong> (<em>int</em><em>, </em><em>4</em>) – Number of read heads.</li>
 <li><strong>batch_size</strong> (<em>int</em><em>, </em><em>1</em>) – Length of the batch.</li>
 <li><strong>softmax_allocation</strong> (<em>bool</em><em>, </em><em>True</em>) – Use alternative softmax memory
 allocation for writing or the original formulation.</li>
@@ -219,8 +219,8 @@ allocation for writing or the original formulation.</li>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="DNCv3.DNC.num_heads">
-<code class="descname">num_heads</code><a class="headerlink" href="#DNCv3.DNC.num_heads" title="Permalink to this definition">¶</a></dt>
+<dt id="DNCv3.DNC.n_read_heads">
+<code class="descname">n_read_heads</code><a class="headerlink" href="#DNCv3.DNC.n_read_heads" title="Permalink to this definition">¶</a></dt>
 <dd><p><em>arg</em></p>
 </dd></dl>
 
@@ -239,13 +239,13 @@ allocation for writing or the original formulation.</li>
 <dl class="attribute">
 <dt id="DNCv3.DNC.intrfc_len">
 <code class="descname">intrfc_len</code><a class="headerlink" href="#DNCv3.DNC.intrfc_len" title="Permalink to this definition">¶</a></dt>
-<dd><p><code class="docutils literal"><span class="pre">num_heads*bit_len</span> <span class="pre">+</span> <span class="pre">3*bit_len</span> <span class="pre">+</span> <span class="pre">5*num_heads</span> <span class="pre">+</span> <span class="pre">3</span></code> – Size of emitted interface vector.</p>
+<dd><p><code class="docutils literal"><span class="pre">n_read_heads*bit_len</span> <span class="pre">+</span> <span class="pre">3*bit_len</span> <span class="pre">+</span> <span class="pre">5*n_read_heads</span> <span class="pre">+</span> <span class="pre">3</span></code> – Size of emitted interface vector.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="DNCv3.DNC.nn_input_size">
 <code class="descname">nn_input_size</code><a class="headerlink" href="#DNCv3.DNC.nn_input_size" title="Permalink to this definition">¶</a></dt>
-<dd><p><code class="docutils literal"><span class="pre">num_heads*bit_len</span> <span class="pre">+</span> <span class="pre">input_size</span></code> – Size of concatted
+<dd><p><code class="docutils literal"><span class="pre">n_read_heads*bit_len</span> <span class="pre">+</span> <span class="pre">input_size</span></code> – Size of concatted
 read and input vector.</p>
 </dd></dl>
 
@@ -278,7 +278,7 @@ after initializing myDNC.</div></blockquote>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>nn_out</strong> – The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">output_size</span></code> prediction from
 the controller.</li>
-<li><strong>read_vecs</strong> – The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">bit_len</span> <span class="pre">x</span> <span class="pre">num_heads</span></code> output from
+<li><strong>read_vecs</strong> – The <code class="docutils literal"><span class="pre">batch_size</span> <span class="pre">x</span> <span class="pre">bit_len</span> <span class="pre">x</span> <span class="pre">n_read_heads</span></code> output from
 memory interaction.</li>
 </ul>
 </td>
@@ -296,7 +296,7 @@ memory interaction.</li>
 <dd><p>Determine the controller for the DNC.</p>
 <p>The input is expected to be a callable that maps from size
 <code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">nn_input_size</span></code> to size <code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">nn_output_size.</span></code> Recall
-that <code class="docutils literal"><span class="pre">nn_input_size</span> <span class="pre">=</span> <span class="pre">input_size</span> <span class="pre">+</span> <span class="pre">num_heads*bit_len</span></code> and
+that <code class="docutils literal"><span class="pre">nn_input_size</span> <span class="pre">=</span> <span class="pre">input_size</span> <span class="pre">+</span> <span class="pre">n_read_heads*bit_len</span></code> and
 that <code class="docutils literal"><span class="pre">nn_output_size</span> <span class="pre">=</span> <span class="pre">output_size</span> <span class="pre">+</span> <span class="pre">intrfc_len.</span></code> Note that
 the controller object is <cite>not</cite> responsible for emitting seperate
 prediction and interface vectors.</p>
@@ -345,7 +345,7 @@ and return only one tensor of size <code class="docutils literal"><span class="p
 </div>
 <p>In this case, <code class="docutils literal"><span class="pre">controller</span></code> <cite>must</cite> have a __call__ method
 taking only one argument: the input to the DNC at that timestep
-concatenated with the <code class="docutils literal"><span class="pre">num_heads</span></code> read vectors.</p>
+concatenated with the <code class="docutils literal"><span class="pre">n_read_heads</span></code> read vectors.</p>
 <p>Or, we may use a function:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">net</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
     <span class="c1"># x is [1, nn_input_size]</span>
