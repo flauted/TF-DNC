@@ -11,6 +11,10 @@ class of the real images.
 import numpy as np
 import tensorflow as tf
 import struct
+import argparse
+import sys
+import os
+from tensorflow.examples.tutorials.mnist import input_data
 from tensorflow.python import debug as tf_debug
 from DNCv3 import DNC
 from DNCTrainOps import masked_xent, RMS_train, state_update
@@ -34,11 +38,11 @@ class ConvModel:
         with tf.variable_scope("L1"):
             K1 = tf.get_variable(
                 "layer1_weights",
-                shape=[5, 5, 1, 16],
+                shape=[5, 5, 1, 32],
                 initializer=tf.truncated_normal_initializer(stddev=0.1))
             b1 = tf.get_variable(
                 "layer1_bias",
-                shape=[1, 16, 1, 1],
+                shape=[1, 32, 1, 1],
                 initializer=tf.zeros_initializer())
             l1_conv = tf.nn.conv2d(
                 input_imgs,
@@ -53,11 +57,11 @@ class ConvModel:
         with tf.variable_scope("L2"):
             K2 = tf.get_variable(
                 "layer2_weights",
-                shape=[5, 5, 16, 32],
+                shape=[5, 5, 32, 64],
                 initializer=tf.truncated_normal_initializer(stddev=0.1))
             b2 = tf.get_variable(
                 "layer2_bias",
-                shape=[1, 32, 1, 1],
+                shape=[1, 64, 1, 1],
                 initializer=tf.zeros_initializer())
             l2_conv = tf.nn.conv2d(
                 l1_act,
@@ -72,7 +76,7 @@ class ConvModel:
             conv_out_shape = l2_act.get_shape().as_list()
             feats = np.prod(conv_out_shape[1:])
             conv_out = tf.reshape(
-                l2_act, 
+                l2_act,
                 [self.batch_size, feats])
             fc1_input = tf.concat([conv_out, read_vecs], axis=1)
             W = tf.get_variable(
@@ -106,7 +110,7 @@ def disk_data(image_path, label_path):
         yield get_img(i)
 
 
-def gen_sequence(label_img_gen, seq_len, batch_size):
+def _gen_sequence(label_img_gen, seq_len, batch_size):
     """Generate the input and output sequences."""
     target_batch = []
     input_batch = []
@@ -129,32 +133,67 @@ def gen_sequence(label_img_gen, seq_len, batch_size):
     return target_batch, input_batch
 
 
-def mnist_input(mnist_generator, seq_len, batch_size, img_path, lbl_path):
+def local_mnist_input(mnist_gen, seq_len, batch_size, img_path, lbl_path):
+    """Use locally downloaded images to feed the model.
+
+    Create an MNIST image, label generator. Call this during the training
+    loop to get current data.
+
+    """
     try:
-        final_o_data, final_i_data = gen_sequence(
-                mnist_generator, seq_len, batch_size)
+        final_o_data, final_i_data = _gen_sequence(
+                mnist_gen, seq_len, batch_size)
     except:
-        mnist_generator = disk_data(img_path, lbl_path)
-        final_o_data, final_i_data = gen_sequence(
-            mnist_generator, seq_len, batch_size)
+        mnist_gen = disk_data(img_path, lbl_path)
+        final_o_data, final_i_data = _gen_sequence(
+            mnist_gen, seq_len, batch_size)
+    return final_o_data, final_i_data
+
+
+def builtin_mnist_input(mnist_dset, seq_len, batch_size):
+    """Use the MNIST input module from the tutorials.
+
+    Before, create an mnist dataset using the tutorial api. Call this during
+    the training loop.
+
+    """
+    target_seq_batch = []
+    input_seq_batch = []
+    for _ in range(seq_len):
+        img_batch, lbl_batch = mnist_dset.train.next_batch(batch_size)
+        input_seq_batch.append(img_batch)
+        target_seq_batch.append(lbl_batch)
+    i_data = np.stack(input_seq_batch, 1)
+    o_data = np.stack(target_seq_batch, 1)
+    final_i_data = np.concatenate(
+        (i_data, np.zeros([batch_size, seq_len, 28*28])), axis=1)
+    final_o_data = np.concatenate(
+        (np.zeros([batch_size, seq_len, 10]), o_data), axis=1)
     return final_o_data, final_i_data
 
 
 def run_training(seq_len=3,
                  seq_width=10,
-                 iterations=25000,
+                 iterations=50000,
                  mem_len=6,
                  bit_len=1024,
-                 num_read_heads=1,
-                 num_write_heads=1,
-                 batch_size=1,
+                 num_read_heads=3,
+                 num_write_heads=2,
+                 batch_size=25,
                  softmax_alloc=False,
                  stateful=False,
-                 img_path="/media/dylan/DATA/mnist/mnist_train_images",
-                 lbl_path="/media/dylan/DATA/mnist/mnist_train_labels",
+                 img_path=".",
+                 lbl_path=".",
+                 builtin_input=True,
+                 builtin_download_path="/tmp/tensorflow/mnist/input_data",
                  tb_dir="tb/dnc"):
     """Run training loop."""
-    my_gen = disk_data(img_path, lbl_path)
+    if builtin_input:
+        print("loading mnist data: ")
+        mnist = input_data.read_data_sets(builtin_download_path, one_hot=True)
+        print("Done")
+    else:
+        mnist = disk_data(img_path, lbl_path)
     graph = tf.Graph()
 
     with graph.as_default():
@@ -198,8 +237,12 @@ def run_training(seq_len=3,
                 tb_dir, graph=tf.get_default_graph())
 
             for epoch in range(iterations+1):
-                curr_o_data, curr_i_data = mnist_input(
-                    my_gen, seq_len, batch_size, img_path, lbl_path)
+                if builtin_input:
+                    curr_o_data, curr_i_data = builtin_mnist_input(
+                        mnist, seq_len, batch_size)
+                else:
+                    curr_o_data, curr_i_data = local_mnist_input(
+                        mnist, seq_len, batch_size, img_path, lbl_path)
                 feed_dict = {i_data: curr_i_data, o_data: curr_o_data}
                 current_loss, predictions, _, _ = sess.run(
                     [loss, output, apply_gradients, update_if_stateful],
@@ -215,9 +258,72 @@ def run_training(seq_len=3,
     print(predictions)
 
 
-def main(argv=None):
-    run_training()
+def main(_):
+    run_training(seq_width=10,
+                 iterations=FLAGS.epochs,
+                 mem_len=FLAGS.mem_len,
+                 bit_len=FLAGS.bit_len,
+                 num_read_heads=FLAGS.num_read_heads,
+                 num_write_heads=FLAGS.num_write_heads,
+                 batch_size=FLAGS.batch_size,
+                 softmax_alloc=FLAGS.softmax,
+                 stateful=FLAGS.stateful,
+                 img_path=os.path.join(FLAGS.data_dir, FLAGS.train_imgs),
+                 lbl_path=os.path.join(FLAGS.data_dir, FLAGS.train_lbls),
+                 builtin_input=FLAGS.builtin_input,
+                 builtin_download_path=FLAGS.data_dir,
+                 tb_dir=os.path.join(FLAGS.tb_dir, FLAGS.tb_train))
 
 
 if __name__ == '__main__':
-    tf.app.run()
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument(
+        "-e", "--epochs", type=int, default=25000,
+        help="Number of epochs (minus one) model trains.")
+    parser.add_argument(
+        "-tb", "--tb_dir", type=str,
+        default="tb/dnc",
+        help="Path for folder containing TensorBoard data.")
+    parser.add_argument(
+        "--tb_train", type=str, default="train",
+        help="TensorBoard extension for training data.")
+    parser.add_argument(
+        "-d", "--data_dir", type=str,
+        default="/tmp/tensorflow/mnist/input_data",
+        help="-bi false: path to image, label folder. -bi true: path to save downloaded inputs")
+    parser.add_argument(
+        "--train_imgs", type=str,
+        default="mnist_train_images",
+        help="Train image file within data_dir, used if -bi true.")
+    parser.add_argument(
+        "--train_lbls", type=str,
+        default="mnist_train_labels",
+        help="Train label file within data_dir, used if -bi true")
+    parser.add_argument(
+        "-s", "--seq_len", type=int, default=3,
+        help="Length of (nonzero) input sequence.")
+    parser.add_argument(
+        "-b", "--batch_size", type=int, default=25,
+        help="Number of sequences per step.")
+    parser.add_argument(
+        "-RH", "--num_read_heads", type=int, default=3)
+    parser.add_argument(
+        "-WH", "--num_write_heads", type=int, default=2)
+    parser.add_argument(
+        "-sf", "--stateful", action='store_true', default=False,
+        help="Restore state at each train step.")
+    parser.add_argument(
+        "-sm", "--softmax", action='store_true', default=False,
+        help="Use alternative softmax allocation.")
+    parser.add_argument(
+        "-bi", "--builtin_input", action='store_false', default=True,
+        help="TensorFlow tutorial mnist input.")
+    parser.add_argument(
+        "-W", "--bit_len", type=int, default=1024,
+        help="Length of a slot in memory.")
+    parser.add_argument(
+        "-N", "--mem_len", type=int, default=6,
+        help="Slots in memory.")
+    FLAGS, unparsed = parser.parse_known_args()
+    tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
