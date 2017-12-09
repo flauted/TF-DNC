@@ -5,6 +5,7 @@ import tensorflow as tf
 import os
 from tensorflow.python import debug as tf_debug
 from DNCv3 import DNC
+from DNCTrainOps import masked_xent, state_update, RMS_train
 
 
 class MLPModel:
@@ -61,29 +62,6 @@ def data(seq_len, seq_width, batch_size):
     return final_i_data, final_o_data
 
 
-def evaluate(seq_len=None, seq_width=None, labels=None, logits=None):
-    with tf.name_scope("Eval"):
-        mask = tf.concat(
-            [tf.zeros([seq_len, seq_width]), tf.ones([seq_len, seq_width])],
-            axis=0, name="mask")
-        xent = tf.nn.sigmoid_cross_entropy_with_logits(
-            labels=labels, logits=logits)
-        masked_xent = mask * xent
-        loss = tf.reduce_mean(masked_xent)
-    return loss
-
-
-def update(loss, learning_rate=1e-4, momentum=0.9, clip_low=-10, clip_high=10):
-    with tf.name_scope("Train"):
-        optimizer = tf.train.RMSPropOptimizer(learning_rate, momentum=momentum)
-        grads = optimizer.compute_gradients(loss)
-        for i, (grad, var) in enumerate(grads):
-            if grad is not None:
-                grads[i] = (tf.clip_by_value(grad, clip_low, clip_high), var)
-        update_op = optimizer.apply_gradients(grads)
-    return update_op
-
-
 def run_training(seq_len=6,
                  seq_width=4,
                  iterations=50000,
@@ -126,14 +104,11 @@ def run_training(seq_len=6,
                 scope="DNC",
                 parallel_iterations=1)
 
-            if stateful:
-                update_ops = []
-                for init_var, new_var in zip(initial_state, new_state):
-                    update_ops.extend([init_var.assign(new_var)])
-
-            loss = evaluate(seq_len=seq_len, seq_width=seq_width,
-                            labels=o_data, logits=output)
-            apply_gradients = update(loss)
+            update_if_stateful = state_update(
+                initial_state, new_state, stateful=stateful)
+            loss = masked_xent(seq_len=seq_len, seq_width=seq_width,
+                               labels=o_data, logits=output)
+            apply_gradients = RMS_train(loss)
             sess.run(tf.global_variables_initializer())
             train_writer = tf.summary.FileWriter(
                 "tb/dnc", graph=tf.get_default_graph())
@@ -143,8 +118,7 @@ def run_training(seq_len=6,
                 feed_dict = {i_data: curr_i_data, o_data: curr_o_data}
 
                 predictions, current_loss, _, _ = sess.run(
-                    [output, loss, apply_gradients,
-                     update_ops if stateful else tf.no_op()],
+                    [output, loss, apply_gradients, update_if_stateful],
                     feed_dict=feed_dict)
 
                 if epoch % 100 == 0:

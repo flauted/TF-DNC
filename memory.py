@@ -617,7 +617,7 @@ class Memory:
             The updated precedence weighting.
 
         """
-        reset_factor = 1 - tf.reduce_sum(write_weights, 2, keep_dims=True)
+        reset_factor = 1 - tf.reduce_sum(write_weights, 1, keep_dims=True)
         new_precedence = reset_factor * prev_precedence + write_weights
         return new_precedence
 
@@ -682,7 +682,7 @@ class Memory:
                 back_prob = tf.expand_dims(back_prob, 2)
                 back_pt = tf.reduce_sum(back_w * back_prob, axis=1)
             with tf.variable_scope("cont_part"):
-                cont_prob = read_modes[:, self.n_write_heads, :]
+                cont_prob = read_modes[:, 2*self.n_write_heads, :]
                 cont_prob = tf.expand_dims(cont_prob, 1)
                 cont_pt = cont_w * cont_prob
             read_weights = back_pt + cont_pt + forw_pt
