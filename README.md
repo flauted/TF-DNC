@@ -3,10 +3,10 @@ A Tensorflow implementation of DeepMind's Differentiable Neural Computer.
 
 HTML documentation guide:
 * Navigate to `docs/_build/html` and open in your preferred browser.
-* The DNC documentation covers usage. The memory documentation covers most of the implementation.
-* The documentation aims to serve as a companion/explainer for the Graves paper. Formulae are replicated in LaTeX, then implementation is discussed.
+* The DNC documentation covers object usage. The memory documentation covers most of the bulk of formula implementation.
+* The documentation aims to serve as a companion/explainer for the Graves paper. The formulas do *not* cover multiple write heads. Multiple write heads are not mentioned in the Graves paper. However, multiple write heads are available in the DeepMind source code, as well as this code. Soon, we will upload a LaTeX companion paper that covers multiple write heads. The docs will be updated shortly after. The docs *do* include argument shapes that reflect multiple write heads. If you wish to follow this DNC implementation to help write your own code with only one write head (as in the paper), let *H = 1*.
 
-The goals of this repo are as follows: Provide an example of a DNC with a **Convolutional** Neural Network as controller, discuss the math behind the DNC model, implement the DNC as a TensorFlow RNN object while being accessible for those who are not familiar with the RNN API, offer OOP code without relying on attributes to pass arguments, provide a **TensorBoard** graph, incorporate **softmax addressing** and the original implementation, include **multiple write heads** and discussion, and provide a **stateful** option.
+The goals of this repo are as follows: Provide an example of a DNC with a **Convolutional** Neural Network as controller, discuss the math behind the DNC model, implement the DNC as a TensorFlow RNN object while being accessible for those who are not familiar with the RNN API, offer OOP code without relying on attributes to pass arguments, provide a **TensorBoard** graph, incorporate **softmax addressing** and the original implementation, include **multiple write heads** with discussion, and provide a **stateful** option.
 
 ## Implementation and Tasks
 We inherit from the TensorFlow RNN class as suggested in [5]. This allows flexibility and built-in parallelization. The model code is divided between the DNC class and the `Memory` class, which inherits from `DNC`. State variables are passed in an `AccessState` named-tuple defined in `memory.py`. This mechanism is similar to the one used in the original code [3]. From [1] and [2], we borrow the idea of updating the usage with a weighted softmax. The user chooses original implementation or softmax as a parameter to `DNC.__init__()`. Additionally, we create a stateful implementation option within the task training. We use the multiple write heads that are implemented and discussed originally in the DeepMind source code [3].
@@ -18,13 +18,22 @@ Download or clone the repo. Run
 
     $ python CopyTask.py
 
-to train on the standard copy task. (Command line flags are a planned feature; currently parameters must be set in the `*Task.py` source.)
+to train on the standard copy task. Use
 
-Be aware, the `*Task.py` scripts default to writing a TensorBoard logdir at `tb/dnc`.
+    $ python CopyTask.py -h
+
+to view command line arguments and default values.
+
+To run the MNIST convolutional recognition and copy task, run
+
+    $ python MNISTCopyTask.py
+
+or invoke the `-h` flag to view parameters.
+
+Be aware, the `*Task.py` scripts default to writing a TensorBoard logdir at `tb/dnc`. The location may be changed at the command line. The CopyTask has a single accumulator. Since data is randomly generated, there is no need for testing. The MNISTCopyTask has two - one for training and one for testing. The names of the accumulators may be changed at the command line for either script. The files are not deleted upon running either script, so delete the logdir if you do not want loss curves from different script invocations on the same axes!
 
 ## Future Features
 * Looking for ways to improve graph visualization. Suggestions are welcome!
-* Command line args (soon).
 * Better task documentation.
 * Variable sequence length.
 

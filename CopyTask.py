@@ -2,7 +2,9 @@
 """Basic sequence copy task for DNC."""
 import numpy as np
 import tensorflow as tf
+import sys
 import os
+import argparse
 from tensorflow.python import debug as tf_debug
 from DNCv3 import DNC
 from DNCTrainOps import masked_xent, state_update, RMS_train
@@ -108,21 +110,30 @@ def run_training(seq_len=6,
                 initial_state, new_state, stateful=stateful)
             loss = masked_xent(seq_len=seq_len, seq_width=seq_width,
                                labels=o_data, logits=output)
+            tf.summary.scalar("masked_xent", loss)
             apply_gradients = RMS_train(loss)
+            summary_op = tf.summary.merge_all()
             sess.run(tf.global_variables_initializer())
-            train_writer = tf.summary.FileWriter(
-                "tb/dnc", graph=tf.get_default_graph())
+            tb_writer = tf.summary.FileWriter(
+                tb_dir, graph=tf.get_default_graph())
 
             for epoch in range(0, iterations+1):
                 curr_i_data, curr_o_data = data(seq_len, seq_width, batch_size)
                 feed_dict = {i_data: curr_i_data, o_data: curr_o_data}
 
-                predictions, current_loss, _, _ = sess.run(
-                    [output, loss, apply_gradients, update_if_stateful],
+                predictions, current_loss, _, _, summary = sess.run(
+                    [output,
+                     loss,
+                     apply_gradients,
+                     update_if_stateful,
+                     summary_op],
                     feed_dict=feed_dict)
+                tb_writer.add_summary(summary, epoch)
 
                 if epoch % 100 == 0:
                     print("Epoch {}: Loss {}".format(epoch, current_loss))
+
+        tb_writer.close()
 
     print("Final inputs:")
     print(curr_i_data)
@@ -132,9 +143,56 @@ def run_training(seq_len=6,
     print(predictions)
 
 
-def main(argv=None):
-    run_training()
+def main(_):
+    run_training(seq_width=FLAGS.seq_width,
+                 iterations=FLAGS.epochs,
+                 mem_len=FLAGS.mem_len,
+                 bit_len=FLAGS.bit_len,
+                 num_read_heads=FLAGS.num_read_heads,
+                 num_write_heads=FLAGS.num_write_heads,
+                 batch_size=FLAGS.batch_size,
+                 softmax_alloc=FLAGS.softmax,
+                 stateful=FLAGS.stateful,
+                 tb_dir=os.path.join(FLAGS.tb_dir, FLAGS.tb_ext))
 
 
 if __name__ == '__main__':
-    tf.app.run()
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument(
+        "-e", "--epochs", type=int, default=30000,
+        help="Number of epochs (minus one) model trains.")
+    parser.add_argument(
+        "-tb", "--tb_dir", type=str,
+        default="tb/dnc",
+        help="Path for folder containing TensorBoard data.")
+    parser.add_argument(
+        "--tb_ext", type=str, default="CopyTask",
+        help="TensorBoard extension for training summary.")
+    parser.add_argument(
+        "-s", "--seq_len", type=int, default=6,
+        help="Length of (nonzero) input sequence.")
+    parser.add_argument(
+        "-w", "--seq_width", type=int, default=4,
+        help="Number of slots in the binary sequence.")
+    parser.add_argument(
+        "-b", "--batch_size", type=int, default=50,
+        help="Number of sequences per step.")
+    parser.add_argument(
+        "-RH", "--num_read_heads", type=int, default=3)
+    parser.add_argument(
+        "-WH", "--num_write_heads", type=int, default=2)
+    parser.add_argument(
+        "-sf", "--stateful", action='store_true', default=False,
+        help="Restore state at each train step.")
+    parser.add_argument(
+        "-sm", "--softmax", action='store_true', default=True,
+        help="Use alternative softmax allocation.")
+    parser.add_argument(
+        "-W", "--bit_len", type=int, default=4,
+        help="Length of a slot in memory.")
+    parser.add_argument(
+        "-N", "--mem_len", type=int, default=6,
+        help="Slots in memory.")
+    FLAGS, unparsed = parser.parse_known_args()
+    tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)

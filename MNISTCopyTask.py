@@ -10,7 +10,6 @@ class of the real images.
 """
 import numpy as np
 import tensorflow as tf
-import struct
 import argparse
 import sys
 import os
@@ -21,136 +20,94 @@ from DNCTrainOps import masked_xent, RMS_train, state_update
 
 
 class ConvModel:
-    """A simple convolutional neural network to be used as a controller."""
+    """A simple convolutional neural network to be used as a controller.
+
+    Attributes:
+        input_size
+        output_size
+        read_vec_size
+        batch_size
+        weights: A list of all weights in the network (for regulated loss).
+        biases: A list of all biases in the network (for regulated loss).
+
+    """
 
     def __init__(self, input_size, output_size, read_vec_size, batch_size):  # NOQA
         self.input_size = input_size
         self.output_size = output_size
         self.read_vec_size = read_vec_size
         self.batch_size = batch_size
+        self.weights = []
+        self.biases = []
+
+    def conv_layer(
+            self, inputs, filters_out, kernel_shape=(5, 5), stride=(2, 2)):
+        """A basic convolutional layer with VALID padding and relu activation.
+
+        Args:
+            inputs: The NCHW stack of images.
+            filters_out: The desired number of output filters.
+
+        Keyword Args:
+            kernel_shape (``(5, 5)``): A length-2 iterable.
+            stride (``(2, 2)``): A length-2 iterable.
+
+        """
+        filters_in = inputs.get_shape().as_list()[1]
+        K = tf.get_variable(
+            "Weights",
+            shape=[kernel_shape[0],
+                   kernel_shape[1],
+                   filters_in,
+                   filters_out],
+            initializer=tf.truncated_normal_initializer(stddev=0.1))
+        self.weights.append(K)
+        b = tf.get_variable(
+            "Bias",
+            shape=[1, filters_out, 1, 1],
+            initializer=tf.zeros_initializer())
+        self.biases.append(b)
+        conv = tf.nn.conv2d(
+            inputs,
+            K,
+            strides=(1, 1, stride[0], stride[1]),
+            padding="VALID",
+            data_format="NCHW")
+        z = conv + b
+        a = tf.nn.relu(z)
+        return a
 
     def __call__(self, inputs):
         """Control the DNC."""
-        input_imgs = tf.reshape(
+        imgs = tf.reshape(
             inputs[:, :28*28],
             [self.batch_size, 1, 28, 28])
         read_vecs = inputs[:, 28*28:]
-        with tf.variable_scope("L1"):
-            K1 = tf.get_variable(
-                "layer1_weights",
-                shape=[5, 5, 1, 32],
-                initializer=tf.truncated_normal_initializer(stddev=0.1))
-            b1 = tf.get_variable(
-                "layer1_bias",
-                shape=[1, 32, 1, 1],
-                initializer=tf.zeros_initializer())
-            l1_conv = tf.nn.conv2d(
-                input_imgs,
-                K1,
-                strides=(1, 1, 2, 2),
-                padding="VALID",
-                data_format="NCHW")
-            l1_evidence = l1_conv + b1
-            l1_act = tf.nn.relu(l1_evidence)
-            self.K1 = K1
-            self.b1 = b1
-        with tf.variable_scope("L2"):
-            K2 = tf.get_variable(
-                "layer2_weights",
-                shape=[5, 5, 32, 64],
-                initializer=tf.truncated_normal_initializer(stddev=0.1))
-            b2 = tf.get_variable(
-                "layer2_bias",
-                shape=[1, 64, 1, 1],
-                initializer=tf.zeros_initializer())
-            l2_conv = tf.nn.conv2d(
-                l1_act,
-                K2,
-                strides=(1, 1, 2, 2),
-                padding="VALID",
-                data_format="NCHW")
-            l2_act = tf.nn.relu(l2_conv + b2)
-            self.K2 = K2
-            self.b2 = b2
+        with tf.variable_scope("Conv1"):
+            a1 = self.conv_layer(imgs, 32, kernel_shape=(5, 5), stride=(2, 2))
+        with tf.variable_scope("Conv2"):
+            a2 = self.conv_layer(a1, 64, kernel_shape=(5, 5), stride=(2, 2))
         with tf.variable_scope("FC1"):
-            conv_out_shape = l2_act.get_shape().as_list()
+            conv_out_shape = a2.get_shape().as_list()
             feats = np.prod(conv_out_shape[1:])
-            conv_out = tf.reshape(
-                l2_act,
-                [self.batch_size, feats])
+            conv_out = tf.reshape(a2, [self.batch_size, feats])
             fc1_input = tf.concat([conv_out, read_vecs], axis=1)
             W = tf.get_variable(
-                "fc1_weights",
+                "Weights",
                 shape=[feats+self.read_vec_size, self.output_size],
                 initializer=tf.truncated_normal_initializer(stddev=0.1))
+            self.weights.append(W)
             b = tf.get_variable(
-                "fc1_bias",
+                "Bias",
                 shape=[self.output_size],
                 initializer=tf.zeros_initializer())
+            self.biases.append(b)
             fc1_act = tf.nn.relu(tf.matmul(fc1_input, W) + b)
-            self.W = W
-            self.b = b
             output = fc1_act
         return output
 
 
-def disk_data(image_path, label_path):
-    """Generate inputs for DNC sequence copy task."""
-    with open(label_path, 'rb') as f_label:
-        magic, num = struct.unpack(">II", f_label.read(8))
-        label = np.fromfile(f_label, dtype=np.int8)
-
-    with open(image_path, 'rb') as f_image:
-        magic, num, rows, cols = struct.unpack(">IIII", f_image.read(16))
-        image = np.fromfile(
-            f_image, dtype=np.int8).reshape(len(label), rows, cols)
-
-    get_img = lambda idx: (label[idx], image[idx])  # NOQA
-    for i in range(len(label)):
-        yield get_img(i)
-
-
-def _gen_sequence(label_img_gen, seq_len, batch_size):
-    """Generate the input and output sequences."""
-    target_batch = []
-    input_batch = []
-    for _ in range(batch_size):
-        img_seq = []
-        labels = np.zeros([seq_len, 10])
-        for timestep in range(seq_len):
-            label, img = next(label_img_gen)
-            labels[timestep, label] = 1
-            img_seq.append(img)
-        targets = np.concatenate((np.zeros([seq_len, 10]), labels), axis=0)
-        inputs = np.concatenate(
-            (np.asarray(img_seq),
-             np.zeros([seq_len, 28, 28], dtype=np.float32)),
-            axis=0)
-        inputs = inputs * (2./255) - 1.
-        inputs = np.reshape(inputs, [seq_len*2, 28*28])
-        target_batch.append(targets)
-        input_batch.append(inputs)
-    return target_batch, input_batch
-
-
-def local_mnist_input(mnist_gen, seq_len, batch_size, img_path, lbl_path):
-    """Use locally downloaded images to feed the model.
-
-    Create an MNIST image, label generator. Call this during the training
-    loop to get current data.
-
-    """
-    try:
-        final_o_data, final_i_data = _gen_sequence(
-                mnist_gen, seq_len, batch_size)
-    except:
-        mnist_gen = disk_data(img_path, lbl_path)
-        final_o_data, final_i_data = _gen_sequence(
-            mnist_gen, seq_len, batch_size)
-    return final_o_data, final_i_data
-
-
-def builtin_mnist_input(mnist_dset, seq_len, batch_size):
+def builtin_mnist_input(mnist_dset, seq_len, batch_size, train=True):
     """Use the MNIST input module from the tutorials.
 
     Before, create an mnist dataset using the tutorial api. Call this during
@@ -160,7 +117,10 @@ def builtin_mnist_input(mnist_dset, seq_len, batch_size):
     target_seq_batch = []
     input_seq_batch = []
     for _ in range(seq_len):
-        img_batch, lbl_batch = mnist_dset.train.next_batch(batch_size)
+        if train:
+            img_batch, lbl_batch = mnist_dset.train.next_batch(batch_size)
+        else:
+            img_batch, lbl_batch = mnist_dset.test.next_batch(batch_size)
         input_seq_batch.append(img_batch)
         target_seq_batch.append(lbl_batch)
     i_data = np.stack(input_seq_batch, 1)
@@ -182,25 +142,22 @@ def run_training(seq_len=3,
                  batch_size=25,
                  softmax_alloc=False,
                  stateful=False,
-                 img_path=".",
-                 lbl_path=".",
-                 builtin_input=True,
-                 builtin_download_path="/tmp/tensorflow/mnist/input_data",
-                 tb_dir="tb/dnc"):
+                 download_path="/tmp/tensorflow/mnist/input_data",
+                 tb_dir_train="tb/dnc/train",
+                 tb_dir_test="tb/dnc/test"):
     """Run training loop."""
-    if builtin_input:
-        print("loading mnist data: ")
-        mnist = input_data.read_data_sets(builtin_download_path, one_hot=True)
-        print("Done")
-    else:
-        mnist = disk_data(img_path, lbl_path)
+    print("loading mnist data: ")
+    mnist = input_data.read_data_sets(download_path, one_hot=True)
+    print("Done")
     graph = tf.Graph()
 
     with graph.as_default():
         with tf.Session() as sess:
             # sess = tf_debug.LocalCLIDebugWrapperSession(sess)
-            i_data = tf.placeholder(tf.float32, [batch_size, seq_len*2, 28*28])
-            o_data = tf.placeholder(tf.float32, [batch_size, seq_len*2, seq_width])
+            i_data = tf.placeholder(tf.float32,
+                                    [batch_size, seq_len*2, 28*28])
+            o_data = tf.placeholder(tf.float32,
+                                    [batch_size, seq_len*2, seq_width])
 
             dnc = DNC(
                 input_size=28*28,
@@ -231,31 +188,50 @@ def run_training(seq_len=3,
                 initial_state, new_state, stateful=stateful)
             loss = masked_xent(seq_len=seq_len, seq_width=seq_width,
                                labels=o_data, logits=output)
+            tf.summary.scalar("masked_xent", loss)
+            summary_op = tf.summary.merge_all()
             apply_gradients = RMS_train(loss)
             sess.run(tf.global_variables_initializer())
             train_writer = tf.summary.FileWriter(
-                tb_dir, graph=tf.get_default_graph())
+                tb_dir_train, graph=tf.get_default_graph())
+            test_writer = tf.summary.FileWriter(
+                tb_dir_test, graph=tf.get_default_graph())
 
             for epoch in range(iterations+1):
-                if builtin_input:
-                    curr_o_data, curr_i_data = builtin_mnist_input(
-                        mnist, seq_len, batch_size)
-                else:
-                    curr_o_data, curr_i_data = local_mnist_input(
-                        mnist, seq_len, batch_size, img_path, lbl_path)
-                feed_dict = {i_data: curr_i_data, o_data: curr_o_data}
-                current_loss, predictions, _, _ = sess.run(
-                    [loss, output, apply_gradients, update_if_stateful],
+                test = epoch % 100 == 0
+                train_summarize = epoch % 100 == 0
+                train_o_data, train_i_data = builtin_mnist_input(
+                    mnist, seq_len, batch_size, train=True)
+                feed_dict = {i_data: train_i_data, o_data: train_o_data}
+                train_loss, train_pred, _, _, train_summary = sess.run(
+                    [loss, 
+                     output, 
+                     apply_gradients, 
+                     update_if_stateful, 
+                     summary_op],
                     feed_dict=feed_dict)
-                if epoch % 100 == 0:
-                    print("Epoch {}: Loss {}".format(epoch, current_loss))
+                if train_summarize:
+                    train_writer.add_summary(train_summary, epoch)
+                    print("[TR]: Epoch [{}], Loss [{}]".format(
+                        epoch, train_loss))
+                if test:
+                    test_o_data, test_i_data = builtin_mnist_input(
+                        mnist, seq_len, batch_size, train=False)
+                    feed_dict = {i_data: test_i_data, o_data: test_o_data}
+                    test_loss, test_pred, test_summary = sess.run(
+                        [loss, output, summary_op], feed_dict=feed_dict)
+                    test_writer.add_summary(test_summary, epoch)
+                    print("[TE]: Epoch [{}]: Loss [{}]".format(
+                        epoch, test_loss))
 
-    print("Final inputs:")
-    print(curr_i_data)
-    print("Final targets:")
-    print(curr_o_data)
-    print("Final predictions:")
-    print(predictions)
+            train_writer.close()
+            test_writer.close()
+
+    print(test_i_data)
+    print("Last test targets:")
+    print(test_o_data)
+    print("Last test predictions:")
+    print(test_pred)
 
 
 def main(_):
@@ -268,18 +244,16 @@ def main(_):
                  batch_size=FLAGS.batch_size,
                  softmax_alloc=FLAGS.softmax,
                  stateful=FLAGS.stateful,
-                 img_path=os.path.join(FLAGS.data_dir, FLAGS.train_imgs),
-                 lbl_path=os.path.join(FLAGS.data_dir, FLAGS.train_lbls),
-                 builtin_input=FLAGS.builtin_input,
-                 builtin_download_path=FLAGS.data_dir,
-                 tb_dir=os.path.join(FLAGS.tb_dir, FLAGS.tb_train))
+                 download_path=FLAGS.data_dir,
+                 tb_dir_train=os.path.join(FLAGS.tb_dir, FLAGS.tb_train),
+                 tb_dir_test=os.path.join(FLAGS.tb_dir, FLAGS.tb_test))
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
-        "-e", "--epochs", type=int, default=25000,
+        "-e", "--epochs", type=int, default=30000,
         help="Number of epochs (minus one) model trains.")
     parser.add_argument(
         "-tb", "--tb_dir", type=str,
@@ -287,24 +261,20 @@ if __name__ == '__main__':
         help="Path for folder containing TensorBoard data.")
     parser.add_argument(
         "--tb_train", type=str, default="train",
-        help="TensorBoard extension for training data.")
+        help="TensorBoard extension for training summary.")
+    parser.add_argument(
+        "--tb_test", type=str, default="test",
+        help="TensorBoard extension for test summary.")
     parser.add_argument(
         "-d", "--data_dir", type=str,
         default="/tmp/tensorflow/mnist/input_data",
-        help="-bi false: path to image, label folder. -bi true: path to save downloaded inputs")
-    parser.add_argument(
-        "--train_imgs", type=str,
-        default="mnist_train_images",
-        help="Train image file within data_dir, used if -bi true.")
-    parser.add_argument(
-        "--train_lbls", type=str,
-        default="mnist_train_labels",
-        help="Train label file within data_dir, used if -bi true")
+        help=("-bi false: path to image, label folder. -bi true: path to "
+              "save downloaded inputs"))
     parser.add_argument(
         "-s", "--seq_len", type=int, default=3,
         help="Length of (nonzero) input sequence.")
     parser.add_argument(
-        "-b", "--batch_size", type=int, default=25,
+        "-b", "--batch_size", type=int, default=50,
         help="Number of sequences per step.")
     parser.add_argument(
         "-RH", "--num_read_heads", type=int, default=3)
