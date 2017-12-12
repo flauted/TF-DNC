@@ -260,10 +260,10 @@ if __name__ == '__main__':
         default="tb/dnc",
         help="Path for folder containing TensorBoard data.")
     parser.add_argument(
-        "--tb_train", type=str, default="train",
+        "--tb_train", type=str, default="MNIST_train",
         help="TensorBoard extension for training summary.")
     parser.add_argument(
-        "--tb_test", type=str, default="test",
+        "--tb_test", type=str, default="MNIST_test",
         help="TensorBoard extension for test summary.")
     parser.add_argument(
         "-d", "--data_dir", type=str,
@@ -286,9 +286,6 @@ if __name__ == '__main__':
     parser.add_argument(
         "-sm", "--softmax", action='store_true', default=False,
         help="Use alternative softmax allocation.")
-    parser.add_argument(
-        "-bi", "--builtin_input", action='store_false', default=True,
-        help="TensorFlow tutorial mnist input.")
     parser.add_argument(
         "-W", "--bit_len", type=int, default=1024,
         help="Length of a slot in memory.")
