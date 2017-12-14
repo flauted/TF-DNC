@@ -173,7 +173,8 @@ unlike the LSTM.</p>
 we have</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">W</span> <span class="o">&lt;=&gt;</span> <span class="n">bit_len</span> <span class="p">(</span><span class="n">memory</span> <span class="n">word</span> <span class="n">size</span><span class="p">)</span>
 <span class="n">N</span> <span class="o">&lt;=&gt;</span> <span class="n">mem_len</span> <span class="p">(</span><span class="n">number</span> <span class="n">of</span> <span class="n">memory</span> <span class="n">locations</span><span class="p">)</span>
-<span class="n">R</span> <span class="o">&lt;=&gt;</span> <span class="n">n_read_heads</span> <span class="p">(</span><span class="n">number</span> <span class="n">of</span> <span class="n">read</span> <span class="n">heads</span><span class="p">)</span>
+<span class="n">R</span> <span class="o">&lt;=&gt;</span> <span class="n">n_read_heads</span>
+<span class="n">H</span> <span class="o">&lt;=&gt;</span> <span class="n">n_write_heads</span> <span class="p">(</span><span class="ow">not</span> <span class="ow">in</span> <span class="n">the</span> <span class="n">paper</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -297,32 +298,22 @@ memory interaction.</li>
 <p>The input is expected to be a callable that maps from size
 <code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">nn_input_size</span></code> to size <code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">nn_output_size.</span></code> Recall
 that <code class="docutils literal"><span class="pre">nn_input_size</span> <span class="pre">=</span> <span class="pre">input_size</span> <span class="pre">+</span> <span class="pre">n_read_heads*bit_len</span></code> and
-that <code class="docutils literal"><span class="pre">nn_output_size</span> <span class="pre">=</span> <span class="pre">output_size</span> <span class="pre">+</span> <span class="pre">intrfc_len.</span></code> Note that
-the controller object is <cite>not</cite> responsible for emitting seperate
-prediction and interface vectors.</p>
+that <code class="docutils literal"><span class="pre">nn_output_size</span> <span class="pre">=</span> <span class="pre">output_size</span> <span class="pre">+</span> <span class="pre">intrfc_len.</span></code> The controller
+object is <cite>not</cite> responsible for emitting seperate prediction and
+interface vectors.</p>
 <p>The controller may be a function installed without <code class="docutils literal"><span class="pre">()</span></code> or
 an object with a <code class="docutils literal"><span class="pre">__call__</span></code> method. If the controller is an object,
 it may be initialized with DNC object attributes, especially
 <code class="docutils literal"><span class="pre">myDNC.nn_input_size</span></code> and <code class="docutils literal"><span class="pre">myDNC.nn_output_size</span></code>.</p>
-<p>As for mathematical discussion, the controller maps the time
-step input <span class="math">\(x_t\)</span> concatenated with the interpreted
-information read from memory by each head, <span class="math">\(r^i_{t-1}\)</span>,
-to the prediction and the interface vector. The interface vector
-controls the memory interactions. Precisely</p>
-<div class="math">
-\[\text{ctrlr}([x_t;r^1_{t-1};...;r^R_{t-1}]) \mapsto ([\hat{y}_t; \hat{\zeta}_t])\]</div>
-<p>where <span class="math">\(r^i_{t-1}\)</span> is the interpreted information from read vector
-<cite>i</cite> at the previous time step.</p>
-<p>To be clear, <span class="math">\([\cdot ; \cdot]\)</span> denotes concatenation
-and <span class="math">\([\hat{y}_t; \hat{\zeta}_t]\)</span> is the vector denoting
-the prediction evidence and the interface evidence. Outside
-the controller object, the DNC multiplies the vector emmited by
-the controller by the output weights <span class="math">\(W^y_t\)</span> and then
-again by the interface weights <span class="math">\(W^\zeta_t\)</span>. In other words,
-the DNC converts the <code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">nn_output_size</span> <span class="pre">=</span>
-<span class="pre">1</span> <span class="pre">x</span> <span class="pre">output_size</span> <span class="pre">+</span> <span class="pre">intrfc_len</span></code> vector to one prediction of length
-<code class="docutils literal"><span class="pre">output_size</span></code> and another interface vector of length
-<code class="docutils literal"><span class="pre">intrfc_len</span></code>.</p>
+<p>The controller maps the time step input <span class="math">\(x_t\)</span> concatenated
+with the interpreted information read from memory by each head,
+<span class="math">\(r^i_{t-1}\)</span>, to the prediction and the interface vector.</p>
+<p>The DNC multiplies the vector returned by the controller object
+by the output weights <span class="math">\(W^y_t\)</span> and then by the interface
+weights <span class="math">\(W^\zeta_t\)</span>. In other words, the DNC converts the
+<code class="docutils literal"><span class="pre">1</span> <span class="pre">x</span> <span class="pre">nn_output_size</span> <span class="pre">=</span> <span class="pre">1</span> <span class="pre">x</span> <span class="pre">output_size</span> <span class="pre">+</span> <span class="pre">intrfc_len</span></code> vector to
+one prediction of length <code class="docutils literal"><span class="pre">output_size</span></code> and another interface
+vector of length <code class="docutils literal"><span class="pre">intrfc_len</span></code>.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />

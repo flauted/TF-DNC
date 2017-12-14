@@ -4,7 +4,7 @@ A Tensorflow implementation of DeepMind's Differentiable Neural Computer.
 HTML documentation guide:
 * Navigate to `docs/_build/html` and open in your preferred browser.
 * The DNC documentation covers object usage. The memory documentation covers most of the bulk of formula implementation.
-* The documentation aims to serve as a companion/explainer for the Graves paper. The formulas do *not* cover multiple write heads. Multiple write heads are not mentioned in the Graves paper. However, multiple write heads are available in the DeepMind source code, as well as this code. We have uploaded a LaTeX companion paper that covers multiple write heads. The docs will be updated shortly. The docs *do* include argument shapes that reflect multiple write heads. If you wish to follow this DNC implementation to help write your own code with only one write head (as in the paper), let *H = 1*.
+* The documentation and the illustrated .pdf paper aim to explain the DNC architecture with multiple write heads. If you wish to follow this DNC implementation to help write your own code with only one write head (as in the paper), let *H = 1*.
 
 The goals of this repo are as follows: Provide an example of a DNC with a **Convolutional** Neural Network as controller, discuss the math behind the DNC model, implement the DNC as a TensorFlow RNN object while being accessible for those who are not familiar with the RNN API, offer OOP code without relying on attributes to pass arguments, provide a **TensorBoard** graph, incorporate **softmax addressing** and the original implementation, include **multiple write heads** with discussion, and provide a **stateful** option.
 

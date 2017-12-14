@@ -21,7 +21,8 @@ class DNC(tf.nn.rnn_cell.RNNCell):
 
         W <=> bit_len (memory word size)
         N <=> mem_len (number of memory locations)
-        R <=> n_read_heads (number of read heads)
+        R <=> n_read_heads
+        H <=> n_write_heads (not in the paper)
 
     Args:
         input_size (int): Size of a row of input to ``run`` method.
@@ -166,38 +167,25 @@ class DNC(tf.nn.rnn_cell.RNNCell):
         The input is expected to be a callable that maps from size
         ``1 x nn_input_size`` to size ``1 x nn_output_size.`` Recall
         that ``nn_input_size = input_size + n_read_heads*bit_len`` and
-        that ``nn_output_size = output_size + intrfc_len.`` Note that
-        the controller object is `not` responsible for emitting seperate
-        prediction and interface vectors.
+        that ``nn_output_size = output_size + intrfc_len.`` The controller 
+        object is `not` responsible for emitting seperate prediction and 
+        interface vectors.
 
         The controller may be a function installed without ``()`` or
         an object with a ``__call__`` method. If the controller is an object,
         it may be initialized with DNC object attributes, especially
         ``myDNC.nn_input_size`` and ``myDNC.nn_output_size``.
 
-        As for mathematical discussion, the controller maps the time
-        step input :math:`x_t` concatenated with the interpreted
-        information read from memory by each head, :math:`r^i_{t-1}`,
-        to the prediction and the interface vector. The interface vector
-        controls the memory interactions. Precisely
+        The controller maps the time step input :math:`x_t` concatenated 
+        with the interpreted information read from memory by each head, 
+        :math:`r^i_{t-1}`, to the prediction and the interface vector. 
 
-        .. math::
-
-            \text{ctrlr}([x_t;r^1_{t-1};...;r^R_{t-1}]) \mapsto ([\hat{y}_t; \hat{\zeta}_t])
-
-        where :math:`r^i_{t-1}` is the interpreted information from read vector
-        `i` at the previous time step.
-
-        To be clear, :math:`[\cdot ; \cdot]` denotes concatenation
-        and :math:`[\hat{y}_t; \hat{\zeta}_t]` is the vector denoting
-        the prediction evidence and the interface evidence. Outside
-        the controller object, the DNC multiplies the vector emmited by
-        the controller by the output weights :math:`W^y_t` and then
-        again by the interface weights :math:`W^\zeta_t`. In other words,
-        the DNC converts the ``1 x nn_output_size =
-        1 x output_size + intrfc_len`` vector to one prediction of length
-        ``output_size`` and another interface vector of length
-        ``intrfc_len``.
+        The DNC multiplies the vector returned by the controller object 
+        by the output weights :math:`W^y_t` and then by the interface 
+        weights :math:`W^\zeta_t`. In other words, the DNC converts the 
+        ``1 x nn_output_size = 1 x output_size + intrfc_len`` vector to 
+        one prediction of length ``output_size`` and another interface 
+        vector of length ``intrfc_len``.
 
         Args:
             controller: A callable to predict outputs and select
@@ -230,19 +218,19 @@ class DNC(tf.nn.rnn_cell.RNNCell):
         """
         self.controller = controller
 
-    def _controller(self, x, read_vecs):
+    def _controller(self, x_t, read_vecs):
         """Perform controller operations.
 
-        Use the DNC's installed controller to make an inference
-        given a sample from a time sequence ``x`` (formally ``x_t``)
-        and the weighted vectors read from memory.
+        Use the DNC's installed controller to make an inference given a 
+        sample from a time sequence ``x_t`` and the weighted vectors 
+        read from memory.
 
         Args:
             x ([batch_size, input_size]): The seq sample at the current
                 timestep.
             read_vecs: Vectors interpreted from memory. Must be
-                reshapable to [batch_size, n_read_heads*bit_len]. (From the paper,
-                `read_vecs` would be [n_read_heads, bit_len].)
+                reshapable to [batch_size, n_read_heads*bit_len].
+
         Returns:
             The predicted mapping for `x_t', a tensor of shape
                 [batch_size, output_size].
@@ -251,28 +239,28 @@ class DNC(tf.nn.rnn_cell.RNNCell):
 
         """
         with tf.variable_scope("x_r_cat"):
-            # [x_t; r_{t-1}]
+            # [x_t; r^1_{t-1}; ... ; r^R_{t-1}]
             reshape_read_vecs = tf.reshape(
                 read_vecs, [self.batch_size, self.n_read_heads*self.bit_len])
-            inputs = tf.concat([x, reshape_read_vecs], 1)
+            inputs = tf.concat([x_t, reshape_read_vecs], 1)
 
-        l2_act = self.controller(inputs)
+        activations_y = self.controller(inputs)
 
         with tf.variable_scope("prediction"):
-            # v_t = W^y * a^y
+            # v_t = a^y * W^y
             nn_out_weights = tf.get_variable(
                 "nn_out_weights",
                 shape=[self.nn_output_size, self.output_width],
                 initializer=tf.truncated_normal_initializer(stddev=0.1))
-            nn_out = tf.matmul(l2_act, nn_out_weights)
+            nn_out = tf.matmul(activations_y, nn_out_weights)
 
         with tf.variable_scope("interface"):
-            # Zeta_t = W^Z * a^y
+            # Zeta_t = a^y * W^Z
             interface_weights = tf.get_variable(
                 "interface_weights",
                 shape=[self.nn_output_size, self.intrfc_len],
                 initializer=tf.truncated_normal_initializer(stddev=0.1))
-            interface_vec = tf.matmul(l2_act, interface_weights)
+            interface_vec = tf.matmul(activations_y, interface_weights)
         return nn_out, interface_vec
 
     def final_prediction(self, nn_out, read_vecs):

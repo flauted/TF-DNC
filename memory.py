@@ -15,79 +15,22 @@ AccessState = collections.namedtuple(
 
 class Memory:
     r"""Implement the memory module of the differentiable neural computer.
+    
+    Args:
+        mem_len: The number of slots in memory, N.
+        bit_len: The length of a slot in memory, W.
+        n_read_heads: The number of read heads, R.
+        n_write_heads: The number of write heads, H.
+        batch_size: The number of elements in a batch, B.
+        softmax_allocation: Use alternative allocation or original.
 
-    The interaction is as follows
-
-    * Split up controller interface vector.
-
-    * Make write weights
-
-        - Free gates determine "whether the most recently read locations
-          can be freed."
-        - Retention vector :math:`\psi` "represents by how much each
-          location will NOT be freed by the free gates." Each entry is
-          in ``[0, 1]``.
-        - Usage: A location has high usage if it has been retained by
-          the free gates (:math:`\psi` near 1), AND usage of the location
-          at the last timestep was high or the location was just written
-          to (previous write weights near 1).
-
-    A nice proof that usage stays in ``[0, 1]`` is provided in section 6.3
-    of "Implementation and Optimization of Differentiable Neural Computers"
-    by C. Hsin.
-
-        - Allocation: A sharpened, inverted usage whose elements are in
-          ``[0, 1]`` and  sum to at most 1. ``Allocate``, or write to
-          locations with a low usage.
-        - Write weights: The controller gate determines whether to write
-          to a new location (alloc gate), a location with high content
-          similarity (1 - alloc gate), or not write at all (write gate).
-          Each entry is in ``[0, 1]`` and the vector sums to at most
-          1.
-
-    Thinking of the weight weights as a probability distribution,
-    the remainder of ``1 - sum(weights)`` is the probability of
-    accessing no memory location at all (called null operations).
-
-    * Write memory. Alter memory location ``[i, j]`` as follows
-
-        - Scale down by 1 minus the ith entry of write weights times
-          jth entry of erase vector, a factor in ``[0, 1]``.
-        - Add ith entry of write weights times jth entry of write vector.
-        - In this sense, the write weights determine a scale for each
-          row, while the write and erase vectors carry information for
-          all the columns.
-
-    * Make read weights
-
-        - The temporal link matrix retains the writing order. An entry
-          ``[h, i, j]`` encodes "the degree to which location `i` ... is
-          written to after location `j`" by head `h`. Each row and column 
-          of L defines a probability distribution over the locations, 
-          with nulls.
-        - Precedence: Each element represents how close that location
-          was to the most recent writing, per head. If precedence is high,
-          the memory location has changed a lot recently.
-        - The following happens for each read head
-        - Forward/Backward weighting: Redistribute the previous read
-          weighting based on the TLM. The backward weighting is determined
-          by transposing the TLM, effectively reversing the ordering.
-        - Read weights: The read modes is a probability distribution
-          (elements in ``[0, 1]`` summing to 1 exactly) that controls how
-          the read weights function. If element 1 is high, the reading
-          happens in the reverse order of writing (backward weighting
-          dominates). If element 2 is high, the reading happens on
-          locations where there is a high degree of similarity between
-          the location and the read key. If element 3 is high, the reading
-          happens in the order of the TLM.
-
-    By "order," obviously we do not mean literal iteration; the action
-    does not occur in sequence. It means that e.g. if element 1 of the
-    read modes is high, the information in the oldest memory location is
-    factored in highest in the head's read vector.)
-
-    * Read memory. Multiply the memory by the read weights for each head
-      to give the read (past tense) vectors.
+    Attributes:
+        mem_len: Arg.
+        bit_len: Arg.
+        n_read_heads: Arg.
+        n_write_heads: Arg.
+        batch_size: Arg.
+        softmax_allocation: Arg.
 
     """
 
@@ -115,17 +58,17 @@ class Memory:
               Key             Math       Shape*      Domain
              ------------------------------------------------------
               read_keys**     k^r_t      B x W x R   R
-              read_strengths  B^r_t      B x 1 x R   [0, inf)
+              read_strengths  B^r_t      B x 1 x R   [1, inf)
               write_key**     k^w,h_t    B x W x H   R
-              write_strength  B^w,h_t    B x 1 x H   [0, inf)
+              write_strength  B^w,h_t    B x 1 x H   [1, inf)
               erase_vec       e_t        B x H x W   [0 1]
               write_vec       v_t        B x H x W   R
               free_gates      f^r_t      B x 1 x R   [0 1]
               alloc_gate      g^a,h_t    B x 1 x H   [0 1]
-             [alloc_strength+ B^a_t      B x 1       [0, inf) ]
+             [alloc_strength+ B^a,h_t    B x 1 x H   [1, inf) ]
               write_gate      g^w,h_t    B x 1 x H   [0 1]
-              read_modes      pi^r_t                 SIMPLEX in R dim
-                forward     pi^r_t[:H]   B x H x R   
+              read_modes      pi^r_t                 SIMPLEX on R dim
+                forward     pi^r_t[:H]   B x H x R
                 backward    pi^r_t[H:2H] B x H x R
                 content     pi^r_t[H]    B x 1 x R
 
@@ -138,12 +81,8 @@ class Memory:
 
         **In the paper, keys are shaped W x _.
 
-        The variable reference table is provided to clarify the
-        slicing operations. The reference helps with the obscure
-        implementation, and so too does the TensorBoard graph.
-
         Args:
-            interface_vec (``[batch_size, interface_size]``): The memory
+            interface_vec (``batch_size x interface_size``): The memory
                 interface values.
 
         Returns:
@@ -225,7 +164,10 @@ class Memory:
             with tf.variable_scope("Read_modes"):
                 pi_hat = interface_vec[:, start_idxs[10]:start_idxs[11]]
                 pi_r_hat = tf.reshape(
-                    pi_hat, [self.batch_size, self.n_write_heads*2+1, self.n_read_heads])
+                    pi_hat,
+                    [self.batch_size,
+                     self.n_write_heads*2+1,
+                     self.n_read_heads])
                 pi_r = tf.nn.softmax(pi_r_hat)
                 intrfc["read_modes"] = pi_r
 
@@ -237,7 +179,7 @@ class Memory:
 
         A key vector - emitted by controller - is compared
         to content of each location in memory according to
-        a similarity measurement. The sim scores determine a
+        a similarity measurement. The cos sim scores determine a
         weighting that can be used by the read heads for
         recall or by the write heads to modify memory.
 
@@ -246,16 +188,16 @@ class Memory:
         .. math::
 
             D(u, v) &= \frac{u \cdot v}{\lVert u \rVert \lVert v \rVert},\\
-            C(M, k, \beta)[i] &= \frac{exp(D(k,M[i,\cdot]) \beta)} {\sum_j(exp(D(k,M[j,\cdot]) \beta))}
+            C(M, k, \beta)[i] &= \frac{exp(D(k,M[i,:]) \beta)} {\sum_j(exp(D(k,M[j,:]) \beta))}
 
         Args:
             memory: The ``batch_size x mem_len x bit_len`` memory matrix.
-            key: The ``batch_size x num_heads x mem_len`` key vector.
-            strength: The ``batch_size x 1 x num_heads`` strength vector.
+            key: The ``batch_size x n_*_heads x mem_len`` key vector.
+            strength: The ``batch_size x 1 x n_*_heads`` strength vector.
 
         Returns:
             The cosine similarity between the key and the memory of shape
-            ``batch_size x mem_len x num_keys``.
+            ``batch_size x mem_len x n_*_heads``.
 
         """
         with tf.variable_scope("CosineSimilarity"):
@@ -276,19 +218,20 @@ class Memory:
     def usage_update(prev_usage, write_weights, read_weights, free_gates):
         r"""Update the usage vector.
 
-        Comparing to the paper,
+        According to the paper and the code,
 
         .. math::
 
-            u_t = (u_{t-1} + w^w_{t-1} - (u_{t-1} \odot w^w_{t-1})) \odot \psi_t
+            u_t = (u_{t-1} + ( 1 - u_{t-1}) \odot w^{w, \text{eff}}_{t-1}) \odot \psi_t
 
         such that
 
         .. math::
 
-            \psi_t = \prod_{i=1}^R (1-f^i_t w^{r,i}_{t-1}).
+            \psi_t &= \prod_{i=1}^R (1-f^i_t w^{r,i}_{t-1}), \\
+            w^{w,\text{eff}}_{t-1} &= 1 - \prod_{j=1}^H (1 - w^{w,j}_{t-1}),
 
-        Notice that :math:`f^i_t` is the ith of ``n_read_heads`` free gates
+        where :math:`f^i_t` is the ith of ``n_read_heads`` free gates
         emitted by the controller. Each free gate is in ``[0,1]``. And,
         :math:`w^w_{t-1}` is the old computed write weight vector. Finally,
         :math:`w^{r,i}_{t-1}` is the old computed read weight.
@@ -302,6 +245,7 @@ class Memory:
                 shape ``batch_size x mem_len x n_read_heads``.
             free_gates: A vector of shape ``batch_size x 1 x n_read_heads``
                 with each element in ``[0, 1]``.
+
         Returns:
             The new usage vector according to the above formulae.
 
@@ -311,6 +255,7 @@ class Memory:
         # small write weight -> big weight'
         # big weight' for all column -> big effect'
         # big effect' -> small effect
+
         with tf.variable_scope("effect"):
             effect = 1 - tf.reduce_prod(1 - write_weights, [2])
         with tf.variable_scope("usage_after_write"):
@@ -321,7 +266,7 @@ class Memory:
         return new_usage_vec
 
     def softmax_allocation_weighting(self, usage_vec, head_alloc_strength):
-        """Retrieve the writing allocation weight.
+        """Retrieve the Ben-Ari - Bekker allocation weighting.
 
         The 'usage' is a number between 0 and 1. The `nonusage` is
         then computed by subtracting 1 from usage. Afterwards, we
@@ -338,16 +283,13 @@ class Memory:
         Ben-Ari, I., Bekker, A. J., [2017] in "Differentiable Memory
         Allocation Mechanism For Neural Computing."
 
-        In practice, the usage vector may become negative. This
-        may be due to numerical error or may be a result of the softmax.
-
         Args:
             usage_vec: The ``batch_size x mem_len`` corner-vector.
             alloc_strength: A learned parameter from the interface of
                 shape ``batch_size x 1 x n_write_heads`` in ``[0, 1]``.
 
         Returns:
-            Calculated allocation weights.
+            Calculated allocation weights of shape ``batch_size x mem_len``.
 
         """
         nonusage = tf.subtract(1., usage_vec, name="nonusage")
@@ -387,11 +329,10 @@ class Memory:
         ``= sorted_nonusage[j]``. Then see that
         :math:`\prod_{i=1}^{j-1} u_t[phi_t[i]]` can be computed for all
         `j` using an exclusive cumprod. (Note that it is assumed when `j=1,`
-        the term is `1`.) Then, we calculate ``sorted_alloc``, meaning `in
-        order`, by element-wise multiplying ``sorted_nonusage`` and our
-        cumulative product vector. Finally, we revert the allocation
-        weighting to the original ordering. We gather the ``freelist``
-        entries of ``sorted_alloc``.
+        the term is `1`.) Then, we calculate ``sorted_alloc``by element-wise 
+        multiplying ``sorted_nonusage`` and our cumulative product vector. 
+        Finally, we revert the allocation weighting to the original ordering.
+        We gather the ``freelist`` entries of ``sorted_alloc``.
 
         Args:
             usage_vec: The ``batch_size x mem_len`` vector.
@@ -417,9 +358,17 @@ class Memory:
 
     def alloc_update(
             self, usage, write_gates, alloc_strength=None, softmax=None):
-        """Allocate memory locations for each write head.
+        r"""Allocate memory locations for each write head.
 
-        After every allocation, update the dummy usage vector.
+        Create a dummy usage vector :math:`\bar{u}^j_t`. Calculate allocation
+        for one head, then update the dummy usage vector according to 
+        
+        .. math::
+            
+            \bar{u}^{j+1}_t = \bar{u}^j_t + g^{w,j}_t (1 - \bar{u}^j_t) \odot a^j_t.
+
+        Then, every write head has a unique allocation.
+            
 
         Args:
             usage: A tensor of shape ``batch_size x mem_len``.
@@ -455,12 +404,12 @@ class Memory:
 
         .. math::
 
-            g^w_t[g^a_t a_t + (1 - g^a_t)c^w_t]
+            w^{w,j}_t = g^{w,j}_t[g^{a,j}_t a^j_t + (1 - g^{a,w}_t)c^{w,j}_t]
 
-        where :math:`g^a_t` in ``[0, 1]`` is the allocation gate, :math:`a_t`
-        is the allocation corner-vector, :math:`g^w_t` in ``[0, 1]`` is the
-        write gate, :math:`(1 - g^a_t)` is the "unallocation gate," and
-        :math:`c^w_t` is the writing content lookup.
+        where :math:`g^{a,j}_t` in ``[0, 1]`` is the allocation gate, 
+        :math:`a^j_t` is the allocation corner-vector, :math:`g^w_t` 
+        in ``[0, 1]`` is the write gate, and :math:`c^{w,j}_t` is the 
+        writing content lookup.
 
         Args:
             alloc_weights: The tensor of size 
@@ -492,11 +441,12 @@ class Memory:
 
         .. math::
 
-            M_t = M_{t-1} \odot ( [[1]] - w^w_t (e_t)^T) + w^w_t (v_t)^T
+            M_t = M_{t-1} \odot ( J - w^w_t (e_t)^T) + w^w_t (v_t)^T
 
-        where :math:`w^w_t` is the computed write vector, :math:`e_t` is the
-        emitted erase vector, and :math:`v_t` is the emitted write vector.
-        Also, :math:`[[1]]` denotes a matrix of ones.
+        where :math:`w^w_t` is the computed write weighting tensor, 
+        :math:`e_t` is the emitted erase vector tensor, and :math:`v_t` is 
+        the emitted write vector tensor. Also, :math:`J` denotes a matrix of 
+        ones.
 
         As for implementation, we sidestep the transposition by expanding
         :math:`e_t, v_t` to ``batch_size x 1 x bit_len`` and expanding
@@ -510,6 +460,7 @@ class Memory:
                 ``batch_size x n_write_heads x bit_len``.
             write_vec: The emitted write vector of size
                 ``batch_size x n_write_heads x bit_len``.
+
         Returns:
             The updated memory matrix.
 
@@ -533,32 +484,11 @@ class Memory:
 
         .. math::
 
-            L_t[i,j] &= (1-w^w_t[i]-w^w_t[j]) L_{t-1}[i,j] + w^w_t[i] p_{t-1}[j] \\
-            L_t[i,i] &= 0
+            L^j_t[h,k] &= (1-w^{w,j}_t[h]-w^{w,j}_t[k]) L^j_{t-1}[h,k] + w^{w,j}_t[h] p^j_{t-1}[k], \\
+            L^j_t[k,k] &= 0 \ \forall \ j \leq H, k \leq N,
 
         where :math:`w^w_t` is the write weight corner-vector and :math:`p_t`
         is the precedence corner-vector.
-
-        The actual implementation is different. Instead we broadcast
-        write_weights into a ``(batch_size) x mem_len x mem_len``
-        matrix ``expanded_weights`` of the form ::
-
-            [[ w^w[1]    w^w[1]    ...  w^w[1]    ]
-             [ w^w[2]    w^w[2]    ...  w^w[2]    ]
-             ...
-             [ w^w[m.l.] w^w[m.l.] ...  w^w[m.l.] ]],
-
-        then performing ``1 - expanded_weights - transpose(expanded_weights)``.
-        Then we element-wise multiply the previous temporal link matrix.
-        At this point we have :math:`(1 - w^w_t[i]-w^w_t[j]) L_{t-1}[i,j]`
-        for all :math:`i,j.`
-
-        Then, we multiply the write weights by the precedence weights and
-        add to the previous operations. This comprises
-        :math:`... + w^w_t[i] p_{t-1}[j]` for all :math:`i,j.`.
-
-        Finally, we subtract our result from an identity matrix to
-        eliminate self-links in the temporal link matrix.
 
         Args:
             prev_link_mat: The old 
@@ -603,7 +533,7 @@ class Memory:
 
         .. math::
 
-            p_t = [ 1 - \sum_{i} (w^w_t[i]) ] p_{t-1} + w^w_t,
+            p^j_t = [ 1 - \sum_{n=1}^N (w^{w,j}_t[n]) ] p^j_{t-1} + w^{w,j}_t,
 
         which is implemented exactly as written.
 
@@ -632,15 +562,15 @@ class Memory:
 
         .. math::
 
-            w^{r,i}_t = \pi^i_t[1]b^i_t + \pi^i_t[2]c^{r,i}_t + \pi^i_t[3]f^1_t
+            w^{r,i}_t = \sum_{j=1}^H \pi^i_t[j]b^{i,j}_t + \sum_{j=1}^H \pi^i_t[H+j] f^{i,j}_t + \pi^i_t[2H+1]c^{r,i}_t
 
         where :math:`w^{r,i}_t` is the read weight for read head :math:`i`,
         :math:`pi^i_t` is the read mode vector for read head :math:`i,` and
 
         .. math::
 
-            f^1_t &= L_t w^{r,i}_{t-1}, \\
-            b^i_t &= (L_t)^T w^{r,i}_{t-1} \text{ and } \\
+            f^{i,j}_t &= L^j_t w^{r,i}_{t-1}, \\
+            b^{i,j}_t &= (L^j_t)^T w^{r,i}_{t-1} \text{ and } \\
             c^{r,i}_t &= C(M_t, k^{r,i}_t, \beta^{r,i}_t). \\
 
         Args:
@@ -696,7 +626,7 @@ class Memory:
             memory_matrix: The ``batch_size x mem_len x bit_len`` memory
                 matrix.
             read_weights: A tensor of corner-vectors for each read head,
-                with shape ``n_read_heads x mem_len``.
+                with shape ``batch_size x n_read_heads x mem_len``.
 
         Returns:
             The read (past tense) real-valued vectors for each read head; a
